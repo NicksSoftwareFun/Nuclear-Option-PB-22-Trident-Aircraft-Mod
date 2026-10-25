@@ -1,0 +1,28 @@
+{
+  "id": "PB22Trident",
+  "displayName": "PB-22 Trident",
+  "description": "A modern long-range naval strike bomber inspired by the Tu-22M3 Backfire. Swing wings, two afterburning engines, four crew with ejection seats, a built-in jammer, forward and rear weapon bays plus four pylons, live cockpit gauges and three liveries.",
+  "tags": ["mod", "Aircraft", "blueprinter"],
+  "urls": [
+    { "name": "info", "url": "https://github.com/NicksSoftwareFun/nuclear-option-pb-22-trident-aircraft-mod" }
+  ],
+  "authors": ["NicksSoftwareFun"],
+  "isClientOrServer": "Both",
+  "githubOwner": "NicksSoftwareFun",
+  "githubRepoName": "nuclear-option-pb-22-trident-aircraft-mod",
+  "autoUpdateArtifacts": "True",
+  "artifacts": [
+    {
+      "fileName": "PB22Trident.dll",
+      "version": "0.9.0",
+      "category": "release",
+      "type": "plugin",
+      "gameVersion": "0.34.2",
+      "downloadUrl": "https://github.com/NicksSoftwareFun/nuclear-option-pb-22-trident-aircraft-mod/releases/download/v0.9/PB22Trident.dll",
+      "hash": "sha256:FILL_IN_AFTER_RELEASE",
+      "dependencies": [
+        { "id": "com.nikkorap.blueprinter", "version": "2.0.1" }
+      ]
+    }
+  ]
+}

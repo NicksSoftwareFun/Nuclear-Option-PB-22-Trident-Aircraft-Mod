@@ -1,0 +1,56 @@
+# Changelog
+
+## 0.9.0
+- Release candidate.
+- Debug log lines are off by default (`Testing/DebugLog` in the config).
+
+## 0.4.10
+- Engine fans spin and the cockpit gauges work in flight.
+- The AI no longer bounces back into the air after touching down.
+
+## 0.4.9
+- Bigger, readable livery text.
+- Smoother shading along the panel seams.
+- Level rear crew windows.
+
+## 0.4.8
+- Live cockpit gauges.
+
+## 0.4.7
+- Portholes in the pilot hatches.
+- Softer panel lines, matte intake ducts.
+
+## 0.4.6
+- Material and intake gap fixes from the 0.4.5 test.
+
+## 0.4.5
+- New windscreen with a better view over the nose; pilots sit higher.
+- New cockpit interior with working yokes and throttles.
+
+## 0.4.4
+- Lighter model (about 30% fewer triangles) with more internal structure.
+
+## 0.4.3
+- Markings painted into the livery texture, like the stock aircraft.
+
+## 0.4.0
+- Renamed to PB-22 Trident.
+- Reshaped intakes with open ducts.
+- Seam grime per livery: grey cleanest, Low-Level Camo dirtier, Maritime Blue with rust tones.
+
+## 0.3.9
+- Stronger jammer (about 20 s at full power).
+- AI ground-roll and turning fixes.
+
+## 0.3.0
+- Maritime Blue and Low-Level Camo liveries.
+- Internal structure for battle damage.
+- New flight model.
+
+## 0.2.0
+- Integrated four-seat cockpit with ejection seats and roof hatches.
+- Electronic warfare tail cone.
+- Detailed wheel wells and bays.
+
+## 0.1.0
+- First flyable version.

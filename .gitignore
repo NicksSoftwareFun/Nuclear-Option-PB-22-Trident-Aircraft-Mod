@@ -1,0 +1,10 @@
+bin/
+obj/
+*.nobp
+*.blend
+*.blend1
+__pycache__/
+# game files exported for the art and Unity scripts; never commit these
+art/in/
+*.obj
+*.fbx

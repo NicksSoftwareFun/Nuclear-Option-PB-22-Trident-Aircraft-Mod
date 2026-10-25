@@ -1,0 +1,44 @@
+"""Dump the skin (and mech) atlas geometry of the PB-22 at rest pose for texture painting.
+Usage: python3 tex_geom.py <pb22_detail.blend> <out.npz>
+Per material family: triangles' UVs, world positions, smooth normals (35 deg auto-smooth, as exported) and part ids."""
+import bpy, bmesh, sys, os, math, json
+import numpy as np
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+from pb22_pose import apply_pose
+a = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else sys.argv[1:]
+bpy.ops.wm.open_mainfile(filepath=a[0])
+apply_pose(doors=0.0)
+bpy.context.view_layer.update()
+out = {}
+names = []
+for fam in ('PB22_skin', 'PB22_mech', 'PB22_glass'):
+    UV, P, N, PID = [], [], [], []
+    for o in bpy.data.collections['MODEL'].objects:
+        if o.type != 'MESH' or not o.data.materials or o.data.materials[0].name != fam: continue
+        if o.name not in names: names.append(o.name)
+        pid = names.index(o.name)
+        me = o.data.copy()
+        bm = bmesh.new(); bm.from_mesh(me)
+        bmesh.ops.triangulate(bm, faces=bm.faces)
+        bm.to_mesh(me); bm.free()
+        me.transform(o.matrix_world)
+        if o.matrix_world.determinant() < 0: me.flip_normals()
+        # smooth by angle like the export
+        me.shade_smooth()
+        try: me.set_sharp_from_angle(angle=math.radians(35))
+        except AttributeError: pass
+        me.calc_loop_triangles()
+        uvl = me.uv_layers.active.data
+        cn = np.array([cl.vector for cl in me.corner_normals]) if hasattr(me, 'corner_normals') else None
+        for t in me.loop_triangles:
+            UV.append([tuple(uvl[l].uv) for l in t.loops])
+            P.append([tuple(me.vertices[v].co) for v in t.vertices])
+            N.append([tuple(cn[l]) if cn is not None else tuple(t.normal) for l in t.loops])
+            PID.append(pid)
+        bpy.data.meshes.remove(me)
+    out[fam + '_uv'] = np.array(UV, np.float32); out[fam + '_p'] = np.array(P, np.float32)
+    out[fam + '_n'] = np.array(N, np.float32); out[fam + '_pid'] = np.array(PID, np.int16)
+    print(fam, len(UV), 'tris')
+out['names'] = np.array(names)
+np.savez_compressed(a[1], **out)
+print('saved', a[1])

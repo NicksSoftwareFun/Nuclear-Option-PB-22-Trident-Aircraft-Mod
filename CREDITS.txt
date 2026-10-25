@@ -1,0 +1,26 @@
+# Credits
+
+## Game
+
+Nuclear Option and its assets are the property of Shockfront Studios. This project is not affiliated with or endorsed by Shockfront Studios.
+
+The PB-22 Trident is built on the stock Alkyon AB-4 setup. Its exterior model, cockpit and textures are original, made to match the look of the game's own aircraft. At load time Blueprinter points the bundle at the game's own shaders, effects, sounds, weapons and pylons.
+
+The bundle also carries a few copies of stock game assets as named PB-22 parts: the internal structure textures (seen through battle damage) and the Medusa ejection seats. They remain the property of Shockfront Studios. This repository does not contain them.
+
+## Third-party software
+
+| Project | Author | Licence | Use |
+|---|---|---|---|
+| [BepInEx](https://github.com/BepInEx/BepInEx) | BepInEx team | LGPL-2.1 | Mod loader (runtime dependency, not redistributed) |
+| [Harmony](https://github.com/pardeike/Harmony) | Andreas Pardeike | MIT | Runtime patching (ships with BepInEx, not redistributed) |
+| [Blueprinter](https://github.com/nikkorap/NOBlueprinter-Releases) | nikkorap | See its repository | Loads the embedded `.nobp` bundle (runtime dependency, not redistributed) |
+| [Blender](https://www.blender.org/) / bpy | Blender Foundation | GPL-2.0-or-later | Modelling and rendering tool (not redistributed) |
+| [Pillow](https://python-pillow.org/) | Pillow contributors | MIT-CMU | Texture painting tool (not redistributed) |
+| [NumPy](https://numpy.org/) | NumPy developers | BSD-3-Clause | Texture painting tool (not redistributed) |
+| [Allerta Stencil](https://fonts.google.com/specimen/Allerta+Stencil) | Vernon Adams | SIL OFL 1.1 | Stencil lettering painted into the liveries (font file in `art/fonts`) |
+| [DejaVu Sans](https://dejavu-fonts.github.io/) | DejaVu fonts team | Bitstream Vera / public domain | Small stencils painted into the textures |
+
+## PB-22 Trident
+
+Model, textures, plugin and scripts by NicksSoftwareFun, released under the [MIT License](LICENSE).

@@ -13,7 +13,7 @@ A modern long-range naval strike bomber for Nuclear Option, inspired by the Tu-2
 ## Install
 
 1. Install BepInEx 5 and Blueprinter.
-2. Download `PB22Trident.dll` from the [latest release](../../releases/latest).
+2. Download `PB22Trident.dll` from the [releases page](../../releases).
 3. Put it in `Nuclear Option\BepInEx\plugins`.
 4. Start the game. The PB-22 Trident shows up with the other aircraft.
 

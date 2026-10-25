@@ -2,11 +2,13 @@
 
 ## 0.9.0
 - Release candidate.
-- Debug log lines are off by default (`Testing/DebugLog` in the config).
+- Tac screen camera feeds show their full width again, so the RNG/ALT/HDG labels are no longer cut off.
+- Removed the unused standby horizon from the tac screen.
+- Plugin diagnostic log lines are off by default (`Testing/DebugLog` in the config).
 
 ## 0.4.10
 - Engine fans spin and the cockpit gauges work in flight.
-- The AI no longer bounces back into the air after touching down.
+- AI landings no longer abort: the abort height is measured at the main wheels, and the nose comes down after touchdown.
 
 ## 0.4.9
 - Bigger, readable livery text.

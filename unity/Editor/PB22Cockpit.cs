@@ -136,7 +136,6 @@ public static class PB22Cockpit
     //   centre (440,0,584,230)   merged centre display: flight data, both engines, fuel and throttle
     //   stores (440,230,310,282) middle displays: PB-22 planform with the five weapon stations
     //   annun  (0,400,440,46)    both pilots' lamp strips on the glareshield lip
-    //   adi    (760,250,256,256) standby attitude ball on both pilots' round gauges (stock ArtificialHorizon)
     // Everything on the page is a stock HUD app (Medusa page as the base, Darkreach engine rows); no plugin code.
     static readonly Color LAMP_OFF = new Color(0.055f, 0.06f, 0.055f, 1f);
     static readonly Color LEGEND = new Color(0.42f, 0.42f, 0.40f, 1f);
@@ -214,10 +213,16 @@ public static class PB22Cockpit
             var tacC = Rgn(0, 0, 440, 400);
             Place(R("Radar"), tacC, 400f/512f);
             foreach (var cn in new[] { "TargetCam", "LandingCam" })
-            {   // the feed is 3:2, the glass 1.1:1: fill the glass height and trim the sides evenly (2026-10-19: feed was letterboxed)
-                var cam = R(cn); Place(cam, tacC, 1f); cam.sizeDelta = new Vector2(440f, 400f);
+            {   // the feed is 3:2, the glass 1.1:1. The game's target screen pins its RNG/ALT/HDG labels to the feed's left and right
+                // edges, so the whole width is shown (2026-10-25: cropping cut the labels off) and black bars fill the glass above
+                // and below. The bars are children of the feed, so they show and hide with it and leave the radar alone.
+                var cam = R(cn); Place(cam, tacC, 1f); float fh = 440f*240f/360f; cam.sizeDelta = new Vector2(440f, fh);
                 var raw = cam.GetComponent<UnityEngine.UI.RawImage>();
-                if (raw != null) { float uw = (440f/400f)/(360f/240f); raw.uvRect = new Rect((1f - uw)/2f, 0f, uw, 1f); }
+                if (raw != null) raw.uvRect = new Rect(0f, 0f, 1f, 1f);
+                foreach (var old in cam.Cast<Transform>().Where(t => t.name.StartsWith("PB22_bar")).ToList()) Object.DestroyImmediate(old.gameObject);
+                float bh = (400f - fh)/2f;
+                Img("PB22_barTop", cam, new Vector2(0f, (fh + bh)/2f), new Vector2(440f, bh), Color.black);
+                Img("PB22_barBottom", cam, new Vector2(0f, -(fh + bh)/2f), new Vector2(440f, bh), Color.black);
             }
             Place(R("TimeObject"), tacC + new Vector2(-150f, 172f), 1f);
             foreach (var n in new[] { "Buttons", "divider", "divider (2)", "nozzleGauge" }) R(n).gameObject.SetActive(false);
@@ -418,43 +423,6 @@ public static class PB22Cockpit
                 var ct = so.FindProperty("colorableTexts"); ct.arraySize++; ct.GetArrayElementAtIndex(ct.arraySize - 1).objectReferenceValue = lampText["ENG " + side];
                 so.ApplyModifiedPropertiesWithoutUndo();
             }
-            // standby attitude ball (2026-10-19: make the horizon work): stock ArtificialHorizon app in its own 256 px square,
-            // shown on both pilots' round standby gauges. Ground is a filled square turned with roll, its fill height follows pitch.
-            {
-                string whp = CK + "PB22_white.png";
-                if (!System.IO.File.Exists(whp))
-                {
-                    var wt = new Texture2D(8, 8); var px = new Color[64]; for (int i = 0; i < 64; i++) px[i] = Color.white; wt.SetPixels(px); wt.Apply();
-                    System.IO.File.WriteAllBytes(whp, wt.EncodeToPNG()); Object.DestroyImmediate(wt); AssetDatabase.ImportAsset(whp);
-                }
-                var wi = (TextureImporter)AssetImporter.GetAtPath(whp);
-                wi.textureType = TextureImporterType.Sprite; wi.mipmapEnabled = false; wi.SaveAndReimport();
-                var white = Load<Sprite>(whp);
-                var adi = Node("StandbyADI", canvas, Rgn(760, 250, 256, 256), new Vector2(256f, 256f));
-                adi.gameObject.AddComponent<UnityEngine.UI.RectMask2D>();
-                var sky = Img("sky", adi, Vector2.zero, new Vector2(256f, 256f), new Color(0.20f, 0.46f, 0.78f, 1f));
-                var ground = Img("ground", adi, Vector2.zero, new Vector2(512f, 512f), new Color(0.47f, 0.31f, 0.16f, 1f));
-                ground.sprite = white; ground.type = UnityEngine.UI.Image.Type.Filled;
-                ground.fillMethod = UnityEngine.UI.Image.FillMethod.Vertical; ground.fillOrigin = 0; ground.fillAmount = 0.5f;
-                var skyFill = Img("skyFill", adi, Vector2.zero, new Vector2(2f, 2f), new Color(0f, 0f, 0f, 0f));   // the app also drives a sky fill; ours stays hidden
-                skyFill.sprite = white; skyFill.type = UnityEngine.UI.Image.Type.Filled; skyFill.enabled = false;
-                var tick = Color.white;
-                foreach (var ang in new[] { -60f, -30f, -20f, -10f, 0f, 10f, 20f, 30f, 60f })
-                {
-                    float rad = ang*Mathf.Deg2Rad, len = (ang % 30f == 0f) ? 18f : 11f, r0 = 126f - len/2f;
-                    var tk = Img("bank" + ang, adi, new Vector2(Mathf.Sin(rad)*r0, Mathf.Cos(rad)*r0), new Vector2(4f, len), tick);
-                    tk.rectTransform.localEulerAngles = new Vector3(0f, 0f, -ang);
-                }
-                var sym = Node("aircraft", adi, Vector2.zero, new Vector2(150f, 12f));
-                var amber = new Color(1f, 0.66f, 0.12f, 1f);
-                Img("wingL", sym, new Vector2(-48f, 0f), new Vector2(46f, 7f), amber); Img("wingR", sym, new Vector2(48f, 0f), new Vector2(46f, 7f), amber);
-                Img("dot", sym, Vector2.zero, new Vector2(10f, 10f), amber);
-                var ah = adi.gameObject.AddComponent(GameType("ArtificialHorizon"));
-                Set(ah, "attitude_img", sym.Find("dot").GetComponent<UnityEngine.UI.Image>());
-                Set(ah, "horizon_img", ground); Set(ah, "sky_img", skyFill);
-                apps.Add(ah);
-            }
-
             // the stock apps on this page, plus ours
             var mgr = root.GetComponent(GameType("MFDAppManager"));
             ObjArray(mgr, "apps", new Object[] { ssd, sg.GetComponent(GameType("StatusGauges")), bfi.GetComponent(GameType("BasicFlightInstruments")) }.Concat(apps).ToArray());

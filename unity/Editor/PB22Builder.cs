@@ -899,7 +899,7 @@ public static class PB22Builder
         new object[] { "Trident-C 'Carpet'",        0.5f, null,                          null,                          "bomb_250_rotaryx30",            "PB22_bomb_500_triple",              "PB22_bomb_500_triple" },
         new object[] { "Trident-N 'Doomsday'",      0.5f, null,                          null,                          "CruiseMissile20kt_internalx2",  "BallisticMissile1_tacNuke_single",  "BallisticMissile1_single" },
         new object[] { "Trident-W 'Wild Weasel'",   0.6f, "AShM3_internalx4_stack",      "AShM3_internalx4_stack",      null,                            "ARM1_double",                       "ARM1_double" },
-        // 2026-10-25
+        // added in 0.9.1
         new object[] { "Trident-J 'Static'",        0.6f, "AShM3_internalx4_stack",      "AShM3_internalx4_stack",      null,                            "PB22_bomb_500_triple",              "JammingPod1" },
         new object[] { "Trident-G 'Gauntlet'",      0.6f, "bomb_500_rotaryx6",           "bomb_500_rotaryx6",           null,                            "ARM1_double",                       "AAM2_double" },
     };

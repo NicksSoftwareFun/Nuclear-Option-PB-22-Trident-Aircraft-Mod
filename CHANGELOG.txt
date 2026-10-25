@@ -1,0 +1,83 @@
+# Changelog
+
+## 0.9.4
+- Rank 5 and cost 225, the same as the Darkreach.
+- Main gear pods keep their flat tops under the wing, so the gap no longer shows into the gear bay.
+- Closed the slot in the belly next to the weapon bays.
+- Fixed the nacelle frame poking through the skin, gaps between the nozzle petals and the ends of the nose gear doors.
+- Canopy frames: a raised border painted around the outside in every livery, and a dark frame along every glass edge inside.
+- Cockpit: solid centre console, rudder pedals slide in floor channels, and nothing clips through the glass any more.
+
+## 0.9.3
+- Rudder pedals now slide in and out with the foot plates kept square, instead of tilting.
+- Closed a hole in the top of the main gear fairing at its outboard front corner, ahead of the wing glove.
+
+## 0.9.2
+- Fixed AI aircraft lifting off again right after touchdown and aborting the landing (the touchdown and takeoff pitch helpers pushed the wrong way).
+- Engine status text on the centre MFD now sits inside the engine box.
+
+## 0.9.1
+- AI landings no longer abort on a small bounce.
+- A PB-22 that finishes its landing roll leaves the runway queue, so following aircraft don't go around.
+- Radar cross-section 0.08 (was 0.0025).
+- AI loadouts trimmed to 8, with three new ones: Static, Gauntlet and Broadside (the new default).
+- Pilot porthole gap closed, with a clean frame ring.
+- EXT PWR stencil no longer repeated inside the intake.
+- Hatch warning stripes no longer flicker at the corners.
+- Optional landing log (`Testing/LandingLog` in the config).
+
+## 0.9.0
+- Tac screen camera feeds show their full width again, so the RNG/ALT/HDG labels are no longer cut off.
+- Removed the unused standby horizon from the tac screen.
+- Plugin diagnostic log lines are off by default (`Testing/DebugLog` in the config).
+
+## 0.4.10
+- Engine fans spin and the cockpit gauges work in flight.
+- AI landings no longer abort: the abort height is measured at the main wheels, and the nose comes down after touchdown.
+
+## 0.4.9
+- Bigger, readable livery text.
+- Smoother shading along the panel seams.
+- Level rear crew windows.
+
+## 0.4.8
+- Live cockpit gauges.
+
+## 0.4.7
+- Portholes in the pilot hatches.
+- Softer panel lines, matte intake ducts.
+
+## 0.4.6
+- Material and intake gap fixes from the 0.4.5 test.
+
+## 0.4.5
+- New windscreen with a better view over the nose; pilots sit higher.
+- New cockpit interior with working yokes and throttles.
+
+## 0.4.4
+- Lighter model (about 30% fewer triangles) with more internal structure.
+
+## 0.4.3
+- Markings painted into the livery texture, like the stock aircraft.
+
+## 0.4.0
+- Renamed to PB-22 Trident.
+- Reshaped intakes with open ducts.
+- Seam grime per livery: grey cleanest, Low-Level Camo dirtier, Maritime Blue with rust tones.
+
+## 0.3.9
+- Stronger jammer (about 20 s at full power).
+- AI ground-roll and turning fixes.
+
+## 0.3.0
+- Maritime Blue and Low-Level Camo liveries.
+- Internal structure for battle damage.
+- New flight model.
+
+## 0.2.0
+- Integrated four-seat cockpit with ejection seats and roof hatches.
+- Electronic warfare tail cone.
+- Detailed wheel wells and bays.
+
+## 0.1.0
+- First flyable version.

@@ -19,6 +19,10 @@ A modern long-range naval strike bomber for Nuclear Option, inspired by the Tu-2
 
 The mod is a single file. It needs nothing else from this repository.
 
+## Mission: To Sink a Carrier
+
+An optional mission made for the PB-22. Download `PB22-To-Sink-a-Carrier.zip` from the same release and unzip it into `%USERPROFILE%\AppData\LocalLow\Shockfront\NuclearOption\Missions`, so you end up with a `PB-22 - To Sink a Carrier` folder there. It shows up in the mission list. The mission files are also in `missions/` in this repository.
+
 ## The aircraft
 
 - Variable-sweep wings, airbrakes, flaps and full landing gear animation.

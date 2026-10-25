@@ -3,7 +3,7 @@
     <TargetFramework>net472</TargetFramework>
     <AssemblyName>PB22Trident</AssemblyName>
     <RootNamespace>PB22Trident</RootNamespace>
-    <Version>0.9.2</Version>
+    <Version>0.9.3</Version>
     <LangVersion>latest</LangVersion>
     <Optimize>true</Optimize>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
@@ -12,8 +12,8 @@
     <ManagedDir>$(GameDir)\NuclearOption_Data\Managed</ManagedDir>
     <BepInExCore>$(GameDir)\BepInEx\core</BepInExCore>
     <!-- Blueprinter bundle built by the Unity Mod Builder, copied next to this file before building. -->
-    <NobpFile Condition="'$(NobpFile)' == ''">PB-22 Trident_0.9.2.nobp</NobpFile>
-    <NobpResourceName Condition="'$(NobpResourceName)' == ''">PB22Trident.PB-22 Trident_0.9.2.nobp</NobpResourceName>
+    <NobpFile Condition="'$(NobpFile)' == ''">PB-22 Trident_0.9.3.nobp</NobpFile>
+    <NobpResourceName Condition="'$(NobpResourceName)' == ''">PB22Trident.PB-22 Trident_0.9.3.nobp</NobpResourceName>
   </PropertyGroup>
   <ItemGroup>
     <EmbeddedResource Include="$(NobpFile)" Condition="Exists('$(NobpFile)')">

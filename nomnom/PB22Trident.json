@@ -14,12 +14,12 @@
   "artifacts": [
     {
       "fileName": "PB22Trident.dll",
-      "version": "0.9.2",
+      "version": "0.9.3",
       "category": "release",
       "type": "plugin",
       "gameVersion": "0.34.2",
-      "downloadUrl": "https://github.com/NicksSoftwareFun/nuclear-option-pb-22-trident-aircraft-mod/releases/download/v0.9.2/PB22Trident.dll",
-      "hash": "sha256:134873A13B1C24278EE2BADC137EBB5B30BC4E5D61B75528084BD8D97F7E603A",
+      "downloadUrl": "https://github.com/NicksSoftwareFun/nuclear-option-pb-22-trident-aircraft-mod/releases/download/v0.9.3/PB22Trident.dll",
+      "hash": "sha256:FB5DC4B2C9ECE7ECF4DD2C1809CAB0B2D0F4A458D34A1C8D42FE332644EBCEAD",
       "dependencies": [
         { "id": "com.nikkorap.blueprinter", "version": "2.0.1" }
       ]

@@ -506,12 +506,16 @@ for side, s in (('R', 1), ('L', -1)):
                   (23.5, 1.72, s * 3.05, prof_rr(0.98, 0.38, 0.06, 0.28)), (25.0, 1.82, s * 2.85, prof_rr(0.66, 0.28, 0.05, 0.20)),
                   (26.9, 2.00, s * 2.70, prof_rr(0.12, 0.06, 0.04, 0.05))], 64)
     loft(gb.mb, GP.rings(17.9, 26.9, 0.2), True, True, SKIN)
-    lo, hi = sorted((s * 2.08, s * 4.55))
     olo, ohi = sorted((s * OPEN_X[0], s * OPEN_X[1]))
-    cav = cutter(f'cut_cav{side}', lo, hi, BAY_DD[0], BAY_DD[1], FAIR_Z + 0.03, 2.30)
+    # the cavity only rises into the glove where the glove recess is (inboard of 4.15); further out the outboard front
+    # corner of the fairing sits ahead of the glove leading edge, so there the cavity stops under the fairing top skin
+    clo, chi = sorted((s * 2.08, s * 4.15))
+    cav = cutter(f'cut_cav{side}', clo, chi, BAY_DD[0], BAY_DD[1], FAIR_Z + 0.03, 2.30)
+    clo, chi = sorted((s * 4.10, s * 4.55))
+    cav2 = cutter(f'cut_cavO{side}', clo, chi, BAY_DD[0], BAY_DD[1], FAIR_Z + 0.03, 2.05)
     opn = cutter(f'cut_open{side}', olo, ohi, BAY_DD[0], BAY_DD[1], 0.5, FAIR_Z + 0.05)
-    for c in (cav, opn): c.data.materials.append(MATS[MECH])
-    apply_cuts(gb, [cav, opn])
+    for c in (cav, cav2, opn): c.data.materials.append(MATS[MECH])
+    apply_cuts(gb, [cav, cav2, opn])
     # recess in the glove underside over the inboard part of the bay (room for the leg door and brackets; stops short of the
     # outer wing root that sits inside the glove further out)
     rlo, rhi = sorted((s * 2.08, s * 4.15))

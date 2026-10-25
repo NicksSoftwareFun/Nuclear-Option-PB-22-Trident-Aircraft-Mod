@@ -11,7 +11,7 @@ namespace PB22Trident
     // green with a slow drift and sag or drop out as the parts behind them are damaged or lost.
     public class PB22Gauges : MonoBehaviour
     {
-        private class Needle { public Transform t; public Quaternion rest; public float angle; }
+        private class Needle { public Transform t; public Quaternion rest; public Vector3 restPos; public float angle; }
 
         private Type hudType, aircraftType, fuelTankType, unitPartType, jammerType, imageType;
         private FieldInfo hudInstance;
@@ -80,7 +80,7 @@ namespace PB22Trident
             {
                 if (t.name.StartsWith("PB22_gauge_")) needles[t.name.Substring(11)] = new Needle { t = t, rest = t.localRotation };
                 if (t.name.StartsWith("PB22_adi_")) balls.Add(t);
-                if (t.name.StartsWith("PB22_pedal_")) pedals[t.name.Substring(11)] = new Needle { t = t, rest = t.localRotation };
+                if (t.name.StartsWith("PB22_pedal_")) pedals[t.name.Substring(11)] = new Needle { t = t, rest = t.localRotation, restPos = t.localPosition };
                 if (t.name == "engine1") engL = Engine(t);
                 if (t.name == "engine3") engR = Engine(t);
             }
@@ -163,11 +163,12 @@ namespace PB22Trident
             if (float.IsNaN(thr)) thr = 0f; if (float.IsNaN(brake)) brake = 0f;
             float yaw = R.Fl(inputs, "yaw"); if (float.IsNaN(yaw)) yaw = 0f;
             foreach (var kv in pedals)
-            {   // pedals swing on their cross shaft: the right pedal goes forward with right rudder, the left with left
+            {   // pedals slide fore and aft and keep their faces square to the cockpit: right rudder pushes the right pedal in and the left one back
                 if (kv.Value.t == null) continue;
                 float sgn = kv.Key.EndsWith("R") ? 1f : -1f;
-                kv.Value.angle = Mathf.Lerp(kv.Value.angle, -12f * sgn * Mathf.Clamp(yaw, -1f, 1f), 1f - Mathf.Exp(-dt * 10f));
-                kv.Value.t.localRotation = kv.Value.rest * Quaternion.AngleAxis(kv.Value.angle, Vector3.right);
+                kv.Value.angle = Mathf.Lerp(kv.Value.angle, 0.06f * sgn * Mathf.Clamp(yaw, -1f, 1f), 1f - Mathf.Exp(-dt * 10f));
+                kv.Value.t.localRotation = kv.Value.rest;
+                kv.Value.t.localPosition = kv.Value.restPos + Vector3.forward * kv.Value.angle;
             }
             float noz = thr < 0.8f ? 0.35f - 0.2f * thr / 0.8f : 0.15f + 0.85f * (thr - 0.8f) / 0.2f;
             Set("noz", -135f + 270f * Mathf.Clamp01(noz), dt, 2f);

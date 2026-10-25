@@ -893,16 +893,15 @@ public static class PB22Builder
         "PB22_AShM1_tandem", "PB22_AShM3_double", "PB22_AShM2_triple", "PB22_bomb_500_triple" };
     static readonly object[][] Stock = {
         //            name                          fuel   forward bay                    rear bay                       combined bays                    inner pylons                         outer pylons
+        new object[] { "Trident-X 'Broadside'",     0.6f, "AShM2_internalx6",            "AShM2_internalx6",            null,                            "PB22_AShM3_double",                 "PB22_bomb_500_triple" },
         new object[] { "Trident-M 'Sea Lance'",     0.6f, "AShM1_internalx4_stack",      "AShM1_internalx4_stack",      null,                            "PB22_AShM1_tandem",                           "PB22_AShM1_tandem" },
-        new object[] { "Trident-S 'Long Arm'",      0.5f, "AShM3_internalx4_stack",      "AShM3_internalx4_stack",      null,                            "BallisticMissile1_single",          "PB22_AShM1_tandem" },
         new object[] { "Trident-P 'Needle'",        0.6f, "AShM3_internalx4_stack",      "AShM3_internalx4_stack",      null,                            "PB22_AShM3_double",                 "PB22_AShM3_double" },
         new object[] { "Trident-C 'Carpet'",        0.5f, null,                          null,                          "bomb_250_rotaryx30",            "PB22_bomb_500_triple",              "PB22_bomb_500_triple" },
-        new object[] { "Trident-D 'Hammer'",        0.5f, "bomb_penetrator1_internalx4", "bomb_penetrator1_internalx4", null,                            "PB22_bomb_500_triple",              "PB22_AShM3_double" },
         new object[] { "Trident-N 'Doomsday'",      0.5f, null,                          null,                          "CruiseMissile20kt_internalx2",  "BallisticMissile1_tacNuke_single",  "BallisticMissile1_single" },
-        new object[] { "Trident-L 'Escort'",        0.7f, "AShM1_internalx4_stack",      "bomb_500_rotaryx6",           null,                            null,                                null },
-        new object[] { "Trident-H 'Harpoon'",       0.6f, "AShM1_internalx4_stack",      "bomb_500_rotaryx6",           null,                            "PB22_AShM2_triple",                 "PB22_AShM2_triple" },
-        new object[] { "Trident-K 'Kraken'",        0.6f, "AShM2_internalx6",            "AShM2_internalx6",            null,                            null,                                null },
         new object[] { "Trident-W 'Wild Weasel'",   0.6f, "AShM3_internalx4_stack",      "AShM3_internalx4_stack",      null,                            "ARM1_double",                       "ARM1_double" },
+        // 2026-10-25
+        new object[] { "Trident-J 'Static'",        0.6f, "AShM3_internalx4_stack",      "AShM3_internalx4_stack",      null,                            "PB22_bomb_500_triple",              "JammingPod1" },
+        new object[] { "Trident-G 'Gauntlet'",      0.6f, "bomb_500_rotaryx6",           "bomb_500_rotaryx6",           null,                            "ARM1_double",                       "AAM2_double" },
     };
     static Object Mnt(object n) { return n == null ? null : PB22Mounts.Mount((string)n); }
     static void Loadouts()
@@ -1196,6 +1195,7 @@ public static class PB22Builder
         so = new SerializedObject(def);
         so.FindProperty("mass").floatValue = 56000f;
         so.FindProperty("value").floatValue = 0f;
+        so.FindProperty("radarSize").floatValue = 0.08f;  // 2026-10-25: same as the Revoker (Brawler 0.6, Darkreach 0.01)
         so.FindProperty("spawnOffset").vector3Value = new Vector3(0f, 2.85f, 0f);
         so.FindProperty("restRotation").vector3Value = Vector3.zero;
         so.FindProperty("aircraftInfo.emptyWeight").floatValue = 56000f;

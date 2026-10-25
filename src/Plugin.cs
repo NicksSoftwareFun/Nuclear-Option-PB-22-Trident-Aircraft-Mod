@@ -13,7 +13,7 @@ namespace PB22Trident
 {
     // Carries the PB-22 Trident bundle (embedded .nobp, loaded by Blueprinter) and spins the engine fans. Test builds
     // (-p:DefineConstants=FLIGHTLOG) also write a flight log of the player's aircraft for performance tuning.
-    [BepInPlugin("nick.nuclearoption.pb22trident", "PB-22 Trident", "0.9.0")]
+    [BepInPlugin("nick.nuclearoption.pb22trident", "PB-22 Trident", "0.9.1")]
     [BepInDependency("com.nikkorap.blueprinter", BepInDependency.DependencyFlags.SoftDependency)]
     public class Plugin : BaseUnityPlugin
     {
@@ -22,12 +22,13 @@ namespace PB22Trident
         internal static ConfigEntry<float> FlightLogRate;
 #endif
         internal static BepInEx.Logging.ManualLogSource Log;
-        internal static ConfigEntry<bool> DebugLog;
+        internal static ConfigEntry<bool> DebugLog, LandingLog;
 
         private void Awake()
         {
             Log = Logger;
             DebugLog = Config.Bind("Testing", "DebugLog", false, "Write PB-22 fan diagnostics to the BepInEx log.");
+            LandingLog = Config.Bind("Testing", "LandingLog", true, "Write one line to the BepInEx log each time an AI PB-22 changes landing phase.");
 #if FLIGHTLOG
             FlightLog = Config.Bind("Testing", "FlightLog", false,
                 "Write a CSV flight log of the aircraft you fly (any type) to BepInEx/PB22_flightlogs. For performance tuning.");
@@ -92,6 +93,8 @@ namespace PB22Trident
     {
         private const float MainGearAft = 3.9f, OriginHeight = 2.85f, TouchedDown = 4f;  // AIPilotLandingState.LandingMode.Touched_Down
         private static FieldInfo radarAlt;
+        private static Component rawAc;  // the aircraft whose height is swapped right now, and its own value
+        private static float rawAlt;
 
         public static void Apply(BepInEx.Logging.ManualLogSource log)
         {
@@ -102,8 +105,13 @@ namespace PB22Trident
                 var u = R.T("Unit");
                 radarAlt = u == null ? null : u.GetField("radarAlt", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
                 if (m == null || radarAlt == null) { log.LogWarning("PB-22 landing fix: AI landing state not found"); return; }
-                new Harmony("nick.nuclearoption.pb22trident.landing").Patch(m,
-                    prefix: new HarmonyMethod(typeof(LandingFix), nameof(Pre)), postfix: new HarmonyMethod(typeof(LandingFix), nameof(Post)));
+                var h = new Harmony("nick.nuclearoption.pb22trident.landing");
+                h.Patch(m, prefix: new HarmonyMethod(typeof(LandingFix), nameof(Pre)), postfix: new HarmonyMethod(typeof(LandingFix), nameof(Post)));
+                var sw = t.GetMethod("SwitchMode", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                if (sw != null) h.Patch(sw, prefix: new HarmonyMethod(typeof(LandingFix), nameof(Switch)));
+                var leave = t.GetMethod("LeaveState", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                if (leave != null) h.Patch(leave, prefix: new HarmonyMethod(typeof(LandingFix), nameof(Leave)));
+                log.LogInfo("PB-22 landing fix applied");
             }
             catch (Exception e) { log.LogWarning("PB-22 landing fix not applied: " + e.Message); }
         }
@@ -117,13 +125,21 @@ namespace PB22Trident
                 if (ac == null || !ac.name.StartsWith("PB22Trident")) return;
                 float alt = (float)radarAlt.GetValue(ac);
                 if (alt > 20f) return;
-                float pitch = Mathf.Asin(Mathf.Clamp(ac.transform.forward.y, -1f, 1f));
-                if (pitch <= 0f) return;
-                __state = alt;
-                float wheels = alt + OriginHeight * (1f - Mathf.Cos(pitch)) - MainGearAft * Mathf.Sin(pitch);
+                __state = alt; rawAc = ac; rawAlt = alt;
+                float wheels = WheelHeight(ac, alt);
+                // on the runway the stock AI aborts as soon as it reads more than 1 m. With throttle closed and the nose
+                // lowered the PB-22 settles back from a small bounce, so only a real climb (wheels above 2.5 m) aborts
+                if (R.Fl(__instance, "landingMode") == TouchedDown) wheels -= 1.5f;
                 radarAlt.SetValue(ac, Mathf.Max(wheels, 0f));
             }
             catch { }
+        }
+
+        // height of the main wheels: the origin the game measures from sits 3.9 m ahead of them and 2.85 m above the ground
+        private static float WheelHeight(Component ac, float alt)
+        {
+            float pitch = Mathf.Asin(Mathf.Clamp(ac.transform.forward.y, -1f, 1f));
+            return alt + OriginHeight * (1f - Mathf.Cos(pitch)) - MainGearAft * Mathf.Sin(pitch);
         }
 
         private static void Post(object __instance, float __state)
@@ -132,6 +148,7 @@ namespace PB22Trident
             {
                 var ac = R.Get(__instance, "aircraft") as Component;
                 if (!float.IsNaN(__state)) radarAlt.SetValue(ac, __state);
+                rawAc = null;
                 if (ac == null || !ac.name.StartsWith("PB22Trident") || R.Fl(__instance, "landingMode") != TouchedDown) return;
                 // after touchdown the stock AI keeps aiming at the glideslope, so the nose stays up and the PB-22, still
                 // above 350 km/h, flies off the runway again (0.4.9 video). Lower the nose onto the runway like a pilot would.
@@ -143,6 +160,57 @@ namespace PB22Trident
                 if ((float)f.GetValue(ci) > limit) f.SetValue(ci, limit);
             }
             catch { }
+        }
+
+        // one line per landing phase change, so a test flight shows exactly where and why a landing was given up
+        private static void Switch(object __instance, object[] __args)
+        {
+            try
+            {
+                if (!Plugin.LandingLog.Value) return;
+                var ac = R.Get(__instance, "aircraft") as Component;
+                if (ac == null || !ac.name.StartsWith("PB22Trident")) return;
+                var from = R.Get(__instance, "landingMode"); var to = __args[0];
+                if (from == null || to == null || from.Equals(to)) return;
+                var rb = R.Get(ac, "rb");
+                float alt = rawAc == ac ? rawAlt : (float)radarAlt.GetValue(ac), pitch = Mathf.Asin(Mathf.Clamp(ac.transform.forward.y, -1f, 1f)) * Mathf.Rad2Deg;
+                int traffic = -1;
+                var list = Call(R.Get(R.Get(__instance, "runwayUsage"), "Runway"), "GetLandingList") as System.Collections.ICollection;
+                if (list != null) traffic = list.Count - 1;
+                Plugin.Log.LogInfo("PB-22 AI landing " + ac.name + "#" + ac.GetInstanceID() + ": " + from + " -> " + to
+                    + ", wheels " + WheelHeight(ac, alt).ToString("F2") + " m, pitch " + pitch.ToString("F1") + ", speed " + (R.Fl(ac, "speed") * 3.6f).ToString("F0")
+                    + " km/h, sink " + (rb == null ? "?" : (-((Vector3)Prop(rb, "velocity")).y).ToString("F1")) + " m/s, touchdown in " + R.Fl(__instance, "touchdownTime").ToString("F1")
+                    + " s, ground " + R.Fl(__instance, "timeOnGround").ToString("F1") + " s, other landers " + traffic + ", mass " + (rb == null ? "?" : ((float)Prop(rb, "mass") / 1000f).ToString("F1")) + " t");
+            }
+            catch { }
+        }
+
+        // When a landed aircraft slows to taxi speed before it reaches a runway exit, the game hands it to the taxi logic
+        // without taking it off the runway's landing list. Every aircraft behind it on final then sees it as traffic ahead
+        // and gives up its landing. Take a PB-22 off the list itself once its landing run is over.
+        private static void Leave(object __instance)
+        {
+            try
+            {
+                var ac = R.Get(__instance, "aircraft") as Component;
+                if (ac == null || !ac.name.StartsWith("PB22Trident") || R.Fl(__instance, "landingMode") != TouchedDown) return;
+                var runway = R.Get(R.Get(__instance, "runwayUsage"), "Runway");
+                var mi = runway == null ? null : runway.GetType().GetMethod("DeregisterLanding", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                if (mi != null) mi.Invoke(runway, new object[] { ac });
+            }
+            catch { }
+        }
+
+        private static object Prop(object o, string name)
+        {
+            return o.GetType().GetProperty(name).GetValue(o, null);
+        }
+
+        private static object Call(object o, string name)
+        {
+            if (o == null) return null;
+            var mi = o.GetType().GetMethod(name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null, Type.EmptyTypes, null);
+            return mi == null ? null : mi.Invoke(o, null);
         }
     }
 

@@ -245,7 +245,7 @@ public static class PB22Cockpit
                 var title = (RectTransform)row.Find("Title");
                 Place(title, new Vector2(-115f, 18f), 0.6f);
                 title.GetComponent("TMPro.TextMeshProUGUI").GetType().GetProperty("text").SetValue(title.GetComponent("TMPro.TextMeshProUGUI"), "ENG " + side);
-                var status = (RectTransform)title.Find("status"); status.anchoredPosition = new Vector2(0f, -50f);
+                var status = (RectTransform)title.Find("status"); status.anchoredPosition = new Vector2(85f, -50f);   // 0.9.1: x 0 -> 85 so NOMINAL starts under ENG L instead of over the row border
                 float[] xs = { -28f, 46f, 120f };
                 string[] dials = { "ThrustGauge1", "RPMGauge1", "ThrottleGauge1" };
                 for (int k = 0; k < 3; k++) Place((RectTransform)row.Find(dials[k]), new Vector2(xs[k], 6f), 0.9f);
@@ -545,34 +545,69 @@ public static class PB22Cockpit
         // group into loops; the longest loop is the hatch's outer edge (hazard band), the rest are windows (dark frame)
         var next = new Dictionary<int, int>(); for (int i = 0; i < edges.Count; i++) next[edges[i].a] = i;
         var loopOf = new int[edges.Count]; for (int i = 0; i < loopOf.Length; i++) loopOf[i] = -1;
-        var loopLen = new List<float>();
+        var loopLen = new List<float>(); var loops = new List<List<int>>();
         for (int i = 0; i < edges.Count; i++)
         {
             if (loopOf[i] >= 0) continue;
-            int id = loopLen.Count; loopLen.Add(0f); int cur = i;
+            int id = loopLen.Count; loopLen.Add(0f); loops.Add(new List<int>()); int cur = i;
             while (cur >= 0 && loopOf[cur] < 0)
             {
-                loopOf[cur] = id; loopLen[id] += (P[edges[cur].b] - P[edges[cur].a]).magnitude;
+                loopOf[cur] = id; loops[id].Add(cur); loopLen[id] += (P[edges[cur].b] - P[edges[cur].a]).magnitude;
                 cur = next.TryGetValue(edges[cur].b, out var nx) ? nx : -1;
             }
         }
         int outer = loopLen.Count == 0 ? -1 : loopLen.IndexOf(loopLen.Max());
-        for (int i = 0; i < edges.Count; i++)
+        // each loop is one continuous strip (2026-10-25: separate quads per edge piece z-fought at the hazard band corners and
+        // fanned into blocks round the porthole). Inner vertices are mitred: the inward direction at a corner is the sum of its two
+        // edges' inward directions, pushed out by 1/cos(half angle) so the band keeps its width, and neighbours share vertices.
+        for (int li = 0; li < loops.Count; li++)
         {
-            var (a, b, cen) = edges[i];
-            var nrm = (N[a] + N[b]).normalized; var along = P[b] - P[a];
-            var inw = Vector3.Cross(nrm, along).normalized; if (Vector3.Dot(inw, cen - (P[a] + P[b])/2f) < 0f) inw = -inw;
-            bool haz = loopOf[i] == outer;
-            float w = haz ? BAND : 0.02f, lift = LINER_OFF + 0.003f;
-            int pieces = Mathf.Max(1, Mathf.CeilToInt(along.magnitude/0.10f));
-            for (int k = 0; k < pieces; k++)
+            var L = loops[li]; int cnt = L.Count; if (cnt == 0) continue;
+            bool haz = li == outer; float w = haz ? BAND : 0.02f, lift = LINER_OFF + 0.003f;
+            var inwE = new Vector3[cnt];
+            for (int k = 0; k < cnt; k++)
             {
-                var p0 = P[a] + along*(k/(float)pieces) + nrm*lift; var p1 = P[a] + along*((k + 1)/(float)pieces) + nrm*lift;
-                float u1 = UV_HAZARD.xMin + UV_HAZARD.width*Mathf.Min(1f, (p1 - p0).magnitude/0.10f);
-                Vector2 A = haz ? new Vector2(UV_HAZARD.xMin, UV_HAZARD.yMin) : UV_DARK, B = haz ? new Vector2(u1, UV_HAZARD.yMin) : UV_DARK;
-                Vector2 C = haz ? new Vector2(u1, UV_HAZARD.yMax) : UV_DARK, D = haz ? new Vector2(UV_HAZARD.xMin, UV_HAZARD.yMax) : UV_DARK;
-                mb.Quad(p0, p1, p1 + inw*w, p0 + inw*w, A, B, C, D);
-                if (Vector3.Dot(mb.n[mb.n.Count - 1], nrm) < 0f) mb.Flip();      // face the crew
+                var (a, b, cen) = edges[L[k]];
+                var nrm = (N[a] + N[b]).normalized; var along = P[b] - P[a];
+                var inw = Vector3.Cross(nrm, along).normalized; if (Vector3.Dot(inw, cen - (P[a] + P[b])/2f) < 0f) inw = -inw;
+                inwE[k] = inw;
+            }
+            bool closed = edges[L[cnt - 1]].b == edges[L[0]].a;
+            var outerP = new Vector3[cnt + 1]; var innerP = new Vector3[cnt + 1];
+            for (int k = 0; k <= cnt; k++)
+            {   // vertex k is the start of edge k (and the end of edge k-1); vertex cnt is the end of the last edge
+                int v = k < cnt ? edges[L[k]].a : edges[L[cnt - 1]].b;
+                Vector3 ePrev = k > 0 ? inwE[k - 1] : (closed ? inwE[cnt - 1] : inwE[0]);
+                Vector3 eNext = k < cnt ? inwE[k] : (closed ? inwE[0] : inwE[cnt - 1]);
+                var dir = (ePrev + eNext).normalized; if (dir.sqrMagnitude < 1e-6f) dir = eNext;
+                float cosH = Mathf.Max(Vector3.Dot(dir, eNext), 0.4f);
+                outerP[k] = P[v] + N[v]*lift; innerP[k] = outerP[k] + dir*(w/cosH);
+            }
+            if (closed) { outerP[cnt] = outerP[0]; innerP[cnt] = innerP[0]; }
+            // hazard stripes run on one length counter round the loop; pieces break at each 0.10 m stripe tile so the pattern never restarts
+            float run = 0f;
+            for (int k = 0; k < cnt; k++)
+            {
+                var o0 = outerP[k]; var o1 = outerP[k + 1]; var i0 = innerP[k]; var i1 = innerP[k + 1];
+                float segLen = (o1 - o0).magnitude, tt = 0f;
+                if (segLen < 1e-5f) continue;
+                while (tt < 1f - 1e-5f)
+                {
+                    float tileLeft = 0.10f - Mathf.Repeat(run, 0.10f); if (tileLeft < 1e-5f) tileLeft = 0.10f;
+                    float t1 = Mathf.Min(1f, tt + tileLeft/segLen);
+                    float u0 = UV_HAZARD.xMin + UV_HAZARD.width*(Mathf.Repeat(run, 0.10f)/0.10f);
+                    run += (t1 - tt)*segLen;
+                    float f1 = Mathf.Repeat(run, 0.10f)/0.10f; if (f1 < 1e-4f) f1 = 1f;
+                    float u1 = UV_HAZARD.xMin + UV_HAZARD.width*f1;
+                    var p0 = Vector3.Lerp(o0, o1, tt); var p1 = Vector3.Lerp(o0, o1, t1);
+                    var q0 = Vector3.Lerp(i0, i1, tt); var q1 = Vector3.Lerp(i0, i1, t1);
+                    Vector2 A = haz ? new Vector2(u0, UV_HAZARD.yMin) : UV_DARK, B = haz ? new Vector2(u1, UV_HAZARD.yMin) : UV_DARK;
+                    Vector2 C = haz ? new Vector2(u1, UV_HAZARD.yMax) : UV_DARK, D = haz ? new Vector2(u0, UV_HAZARD.yMax) : UV_DARK;
+                    mb.Quad(p0, p1, q1, q0, A, B, C, D);
+                    var ea = edges[L[k]].a;
+                    if (Vector3.Dot(mb.n[mb.n.Count - 1], N[ea]) < 0f) mb.Flip();      // face the crew
+                    tt = t1;
+                }
             }
         }
         // fittings, placed on the liner in the aircraft frame

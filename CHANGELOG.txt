@@ -1,7 +1,17 @@
 # Changelog
 
+## 0.9.1
+- AI landings no longer abort on a small bounce.
+- A PB-22 that finishes its landing roll leaves the runway queue, so following aircraft don't go around.
+- Radar cross-section 0.08 (was 0.0025).
+- AI loadouts trimmed to 8, with three new ones: Static, Gauntlet and Broadside (the new default).
+- Pilot porthole gap closed, with a clean frame ring.
+- EXT PWR stencil no longer repeated inside the intake.
+- Hatch warning stripes no longer flicker at the corners.
+- Engine NOMINAL text sits inside its MFD box.
+- Optional landing log (`Testing/LandingLog` in the config).
+
 ## 0.9.0
-- Release candidate.
 - Tac screen camera feeds show their full width again, so the RNG/ALT/HDG labels are no longer cut off.
 - Removed the unused standby horizon from the tac screen.
 - Plugin diagnostic log lines are off by default (`Testing/DebugLog` in the config).

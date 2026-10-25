@@ -22,7 +22,7 @@ The mod is a single file. It needs nothing else from this repository.
 ## The aircraft
 
 - Variable-sweep wings, airbrakes, flaps and full landing gear animation.
-- Forward and rear weapon bays, two glove pylons and two wing pylons. Ten preset loadouts (Trident-M "Sea Lance", Trident-K "Kraken" and more).
+- Forward and rear weapon bays, two glove pylons and two wing pylons. Preset loadouts for anti-ship, strike and escort roles.
 - Built-in jammer.
 - Four crew stations with ejection seats. The crew hatches double as entry doors.
 - Live cockpit gauges and a working standby horizon.
@@ -38,7 +38,7 @@ The mod is a single file. It needs nothing else from this repository.
 - **Engine fans:** the intake fans spin with engine RPM.
 - **Gauges:** the cockpit needles and warning lamps read the game's flight, engine, fuel, power and damage state. Read only.
 
-Optional settings are in `BepInEx\config\nick.nuclearoption.pb22trident.cfg`. `Testing/DebugLog` writes fan diagnostics to the BepInEx log and is off by default.
+Optional settings are in `BepInEx\config\nick.nuclearoption.pb22trident.cfg`. `Testing/DebugLog` writes fan diagnostics to the BepInEx log (off by default). `Testing/LandingLog` writes one line each time an AI PB-22 changes landing phase.
 
 ## Building from source
 

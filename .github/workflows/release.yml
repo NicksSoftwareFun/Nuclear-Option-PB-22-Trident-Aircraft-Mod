@@ -20,8 +20,10 @@ jobs:
       TAG: ${{ inputs.tag || github.ref_name }}
     steps:
       - uses: actions/checkout@v4
-      - name: Package source
-        run: zip -r "PB22Trident-${TAG}-src.zip" src unity art
+      - name: Package source and missions
+        run: |
+          zip -r "PB22Trident-${TAG}-src.zip" src unity art
+          (cd missions && zip -r ../PB22-To-Sink-a-Carrier.zip "PB-22 - To Sink a Carrier")
       - name: Create release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -29,5 +31,10 @@ jobs:
           awk 'NR>3 && /^## /{exit} NR>3' CHANGELOG.txt > notes.txt
           PRE=""
           case "$TAG" in v0*) PRE="--prerelease" ;; esac
-          gh release create "$TAG" release/PB22Trident.dll "PB22Trident-${TAG}-src.zip" \
-            --target "$GITHUB_SHA" --title "PB-22 Trident ${TAG}" --notes-file notes.txt $PRE
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            # release already out: only add or refresh the mission, leave the DLL and source as published
+            gh release upload "$TAG" PB22-To-Sink-a-Carrier.zip --clobber
+          else
+            gh release create "$TAG" release/PB22Trident.dll "PB22Trident-${TAG}-src.zip" PB22-To-Sink-a-Carrier.zip \
+              --target "$GITHUB_SHA" --title "PB-22 Trident ${TAG}" --notes-file notes.txt $PRE
+          fi

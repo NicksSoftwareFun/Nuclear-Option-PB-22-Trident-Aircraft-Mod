@@ -1,0 +1,324 @@
+{
+    "panPosition": {
+        "x": -885.6707153320313,
+        "y": 1101.04345703125
+    },
+    "zoom": 0.8499997854232788,
+    "nodes": [
+        {
+            "nodeId": {
+                "value": "Objective_Mission Start"
+            },
+            "position": {
+                "x": 7.0,
+                "y": 115.0
+            }
+        },
+        {
+            "nodeId": {
+                "value": "Objective_VehMoveInitialDelay"
+            },
+            "position": {
+                "x": 700.0,
+                "y": 826.223388671875
+            }
+        },
+        {
+            "nodeId": {
+                "value": "Objective_Veh1Move"
+            },
+            "position": {
+                "x": 1400.0,
+                "y": 290.6932678222656
+            }
+        },
+        {
+            "nodeId": {
+                "value": "Objective_Veh2Move"
+            },
+            "position": {
+                "x": 2100.0,
+                "y": 311.6966247558594
+            }
+        },
+        {
+            "nodeId": {
+                "value": "Objective_Veh3Move"
+            },
+            "position": {
+                "x": 2800.0,
+                "y": 79.35659790039063
+            }
+        },
+        {
+            "nodeId": {
+                "value": "Objective_Destroy Ship"
+            },
+            "position": {
+                "x": 700.0,
+                "y": 358.25140380859377
+            }
+        },
+        {
+            "nodeId": {
+                "value": "Objective_KillAnyShip"
+            },
+            "position": {
+                "x": 700.0,
+                "y": 592.223388671875
+            }
+        },
+        {
+            "nodeId": {
+                "value": "Objective_ShipMove"
+            },
+            "position": {
+                "x": 1400.0,
+                "y": 56.693267822265628
+            }
+        },
+        {
+            "nodeId": {
+                "value": "Objective_SpotEnemyFighters"
+            },
+            "position": {
+                "x": 700.0,
+                "y": 124.28905487060547
+            }
+        },
+        {
+            "nodeId": {
+                "value": "Objective_PostObjectiveWait"
+            },
+            "position": {
+                "x": 1400.0,
+                "y": -177.30673217773438
+            }
+        },
+        {
+            "nodeId": {
+                "value": "Objective_ReturnToBaseMarker"
+            },
+            "position": {
+                "x": 2100.0,
+                "y": 39.696624755859378
+            }
+        },
+        {
+            "nodeId": {
+                "value": "Objective_ReturnToBaseForReal"
+            },
+            "position": {
+                "x": 2100.0,
+                "y": -232.30337524414063
+            }
+        },
+        {
+            "nodeId": {
+                "value": "Objective_WaitForMessage1"
+            },
+            "position": {
+                "x": 700.0,
+                "y": -109.66960144042969
+            }
+        },
+        {
+            "nodeId": {
+                "value": "Objective_WaitForMessage2"
+            },
+            "position": {
+                "x": 700.0,
+                "y": -343.631103515625
+            }
+        },
+        {
+            "nodeId": {
+                "value": "Objective_WaitForMessage3"
+            },
+            "position": {
+                "x": 700.0,
+                "y": -577.6014404296875
+            }
+        },
+        {
+            "nodeId": {
+                "value": "Objective_WaitForMessage4"
+            },
+            "position": {
+                "x": 700.0,
+                "y": -811.5853881835938
+            }
+        },
+        {
+            "nodeId": {
+                "value": "Objective_ArgusDeadSpawnAB22Bomber"
+            },
+            "position": {
+                "x": 668.751953125,
+                "y": -1261.56494140625
+            }
+        },
+        {
+            "nodeId": {
+                "value": "Outcome_StartingObjectives"
+            },
+            "position": {
+                "x": 350.0,
+                "y": 98.0
+            }
+        },
+        {
+            "nodeId": {
+                "value": "Outcome_StartVeh1Move"
+            },
+            "position": {
+                "x": 1050.0,
+                "y": 1098.78857421875
+            }
+        },
+        {
+            "nodeId": {
+                "value": "Outcome_StartVeh2Move"
+            },
+            "position": {
+                "x": 1750.0,
+                "y": 317.3633117675781
+            }
+        },
+        {
+            "nodeId": {
+                "value": "Outcome_StartVeh3Move"
+            },
+            "position": {
+                "x": 2450.0,
+                "y": 79.35659790039063
+            }
+        },
+        {
+            "nodeId": {
+                "value": "Outcome_RemoveSpy"
+            },
+            "position": {
+                "x": 3150.0,
+                "y": 79.35659790039063
+            }
+        },
+        {
+            "nodeId": {
+                "value": "Outcome_Win"
+            },
+            "position": {
+                "x": 3500.0,
+                "y": 0.0
+            }
+        },
+        {
+            "nodeId": {
+                "value": "Outcome_StartShipMove"
+            },
+            "position": {
+                "x": 1050.0,
+                "y": 826.7885131835938
+            }
+        },
+        {
+            "nodeId": {
+                "value": "Outcome_SpawnCompasses"
+            },
+            "position": {
+                "x": 1050.0,
+                "y": 554.93310546875
+            }
+        },
+        {
+            "nodeId": {
+                "value": "Outcome_FighterWarning"
+            },
+            "position": {
+                "x": 1050.0,
+                "y": 11.360942840576172
+            }
+        },
+        {
+            "nodeId": {
+                "value": "Outcome_Message1"
+            },
+            "position": {
+                "x": 1050.0,
+                "y": -260.40863037109377
+            }
+        },
+        {
+            "nodeId": {
+                "value": "Outcome_Message2"
+            },
+            "position": {
+                "x": 1050.0,
+                "y": -532.205078125
+            }
+        },
+        {
+            "nodeId": {
+                "value": "Outcome_Message3"
+            },
+            "position": {
+                "x": 1050.0,
+                "y": -804.0536499023438
+            }
+        },
+        {
+            "nodeId": {
+                "value": "Outcome_StartPostObjectiveWait"
+            },
+            "position": {
+                "x": 1050.0,
+                "y": 283.132080078125
+            }
+        },
+        {
+            "nodeId": {
+                "value": "Outcome_StartReturnToBase"
+            },
+            "position": {
+                "x": 1750.0,
+                "y": -226.63668823242188
+            }
+        },
+        {
+            "nodeId": {
+                "value": "Outcome_ObjectiveWinMessage"
+            },
+            "position": {
+                "x": 1750.0,
+                "y": 45.36330795288086
+            }
+        },
+        {
+            "nodeId": {
+                "value": "Outcome_Message4"
+            },
+            "position": {
+                "x": 1050.0,
+                "y": -1075.972900390625
+            }
+        },
+        {
+            "nodeId": {
+                "value": "Outcome_AB22 Reinforcements"
+            },
+            "position": {
+                "x": 1041.9658203125,
+                "y": -1295.3455810546875
+            }
+        },
+        {
+            "nodeId": {
+                "value": "Outcome_ShowMessage"
+            },
+            "position": {
+                "x": 1083.9766845703125,
+                "y": -1462.206787109375
+            }
+        }
+    ]
+}

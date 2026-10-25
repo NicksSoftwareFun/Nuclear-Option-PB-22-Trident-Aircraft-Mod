@@ -13,7 +13,7 @@ namespace PB22Trident
 {
     // Carries the PB-22 Trident bundle (embedded .nobp, loaded by Blueprinter) and spins the engine fans. Test builds
     // (-p:DefineConstants=FLIGHTLOG) also write a flight log of the player's aircraft for performance tuning.
-    [BepInPlugin("nick.nuclearoption.pb22trident", "PB-22 Trident", "0.9.1")]
+    [BepInPlugin("nick.nuclearoption.pb22trident", "PB-22 Trident", "0.9.2")]
     [BepInDependency("com.nikkorap.blueprinter", BepInDependency.DependencyFlags.SoftDependency)]
     public class Plugin : BaseUnityPlugin
     {
@@ -77,9 +77,10 @@ namespace PB22Trident
                 // rotation: the stock AI aims 10 deg up at once and keeps pulling while the wheels are down, which drags the
                 // nozzles on the runway (they touch at 6.4 deg). Pull gently and hold the nose at 5 deg until the jet climbs away.
                 float pitchDeg = Mathf.Asin(Mathf.Clamp(ac.transform.forward.y, -1f, 1f)) * Mathf.Rad2Deg;
+                // positive pitch input is nose down, so a pull is negative: cap the pull so it fades out at 5 deg
                 float cmd = (float)f.GetValue(ci);
-                float limit = Mathf.Clamp((5f - pitchDeg) * 0.15f, -0.5f, 0.35f);
-                if (cmd > limit) f.SetValue(ci, limit);
+                float pull = Mathf.Clamp((5f - pitchDeg) * 0.15f, -0.5f, 0.35f);
+                if (cmd < -pull) f.SetValue(ci, -pull);
             }
             catch { }
         }
@@ -151,13 +152,14 @@ namespace PB22Trident
                 rawAc = null;
                 if (ac == null || !ac.name.StartsWith("PB22Trident") || R.Fl(__instance, "landingMode") != TouchedDown) return;
                 // after touchdown the stock AI keeps aiming at the glideslope, so the nose stays up and the PB-22, still
-                // above 350 km/h, flies off the runway again (0.4.9 video). Lower the nose onto the runway like a pilot would.
+                // above 300 km/h, flies off the runway again (0.4.9 video). Lower the nose onto the runway like a pilot would.
+                // In this game a positive pitch input is stick forward (nose down), as the fly-by-wire and the yokes use it.
                 var ci = R.Get(__instance, "controlInputs");
                 var f = ci == null ? null : ci.GetType().GetField("pitch");
                 if (f == null) return;
                 float pitchDeg = Mathf.Asin(Mathf.Clamp(ac.transform.forward.y, -1f, 1f)) * Mathf.Rad2Deg;
-                float limit = Mathf.Clamp(-pitchDeg * 0.15f, -0.5f, 0.1f);
-                if ((float)f.GetValue(ci) > limit) f.SetValue(ci, limit);
+                float push = Mathf.Clamp(pitchDeg * 0.15f, 0f, 0.6f);
+                if ((float)f.GetValue(ci) < push) f.SetValue(ci, push);
             }
             catch { }
         }

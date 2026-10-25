@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.4
+- Rank 5 and cost 225, the same as the Darkreach.
+- Main gear pods keep their flat tops under the wing, so the gap no longer shows into the gear bay.
+- Closed the slot in the belly next to the weapon bays.
+- Fixed the nacelle frame poking through the skin, gaps between the nozzle petals and the ends of the nose gear doors.
+- Canopy frames: a raised border painted around the outside in every livery, and a dark frame along every glass edge inside.
+- Cockpit: solid centre console, rudder pedals slide in floor channels, and nothing clips through the glass any more.
+
 ## 0.9.3
 - Rudder pedals now slide in and out with the foot plates kept square, instead of tilting.
 - Closed a hole in the top of the main gear fairing at its outboard front corner, ahead of the wing glove.

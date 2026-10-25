@@ -55,7 +55,12 @@ ATLAS = {
     'nozl':    (1536, 1388, 128, 128),
     'brk':     (1664, 1388, 128, 128),
     'volt':    (1792, 1388, 128, 128),
-    'o2':      (1920, 1388, 128, 128),
+    'o2':      (1920, 1388, 128, 128),    # compass bezel (was oxygen); the card turns on top of it
+    'card':    (1536, 224, 128, 128),     # compass card (needle part, turned by the plugin)
+    'ndl':     (1680, 224, 16, 16),       # needle white
+    'ndly':    (1700, 224, 16, 16),       # second-hand yellow
+    'ball':    (1728, 208, 256, 128),     # standby attitude ball: u = longitude (twice round), v = sin(latitude)
+    'amb':     (1992, 208, 16, 16),       # aircraft symbol amber
 }
 TEX = 2048.0
 PAINT_SCALE = 0.30      # UV units per metre inside the paint region (1 m = 614 px)
@@ -178,6 +183,10 @@ def prism(part, fr, shape, depth, mat='PB22_cockpit', decal=None, paint='paint',
     F = [fr.p(a, b, zf) for a, b in inner]
     if front: poly(part, F, mat, [duv(p) for p in inner] if decal else None, paint)
     if decal and knobs:
+        for name, s0, t0, s1, t1 in LAMP_MAP().get(decal, []):    # printed lamps lit through the screen texture
+            pts = [((s0 - 0.5)*bw, (t0 - 0.5)*bh), ((s1 - 0.5)*bw, (t0 - 0.5)*bh), ((s1 - 0.5)*bw, (t1 - 0.5)*bh), ((s0 - 0.5)*bw, (t1 - 0.5)*bh)]
+            face_toward('tacScreen', [fr.p(a, b, zf + 0.0006) for a, b in pts], fr.n, 'tacScreenDisplay',
+                        [lamp_uv(name, 0, 0), lamp_uv(name, 1, 0), lamp_uv(name, 1, 1), lamp_uv(name, 0, 1)])
         for s_, t_, kind, rr_ in KNOB_MAP().get(decal, []):
             physical_knob(part, fr.at((s_ - 0.5)*bw, (t_ - 0.5)*bh), zf, kind, rr_*bw)
     sp = side_paint or paint
@@ -194,6 +203,15 @@ def prism(part, fr, shape, depth, mat='PB22_cockpit', decal=None, paint='paint',
         poly(part, [fr.p(a, b, zb) for a, b in reversed(outer)], mat, None, sp)
 
 _KNOBS = {}
+_LAMPS = None
+def LAMP_MAP():
+    global _LAMPS
+    if _LAMPS is None:
+        import json
+        try: _LAMPS = json.load(open(os.path.join(CK, 'lamps.json')))
+        except OSError: _LAMPS = {}
+    return _LAMPS
+
 def KNOB_MAP():
     """knob / toggle positions printed by pb22_cockpit_tex.py, per atlas region (2026-10-19: every printed knob gets geometry)"""
     if not _KNOBS:
@@ -416,7 +434,13 @@ RT_REGIONS = {                       # pixels, origin top-left of the render tex
     'stores': (440, 230, 310, 282),  # 1.10 : 1, the middle glass
     'annun':  (0, 400, 440, 46),     # one pilot's lamp strip (0.45 x 0.047 m)
     'adi':    (760, 250, 256, 256),  # standby attitude ball (stock ArtificialHorizon), both pilots
+    'lamps':  (0, 446, 440, 66),     # panel lamps lit through the screen texture (8 x 3 cells of 55 x 22)
 }
+LAMP_CELLS = ['GEAR', 'FLAP', 'MSL WARN', 'NOSE', 'LEFT', 'RIGHT', 'FIRE L', 'FIRE R']   # PB22Cockpit.TacScreen builds the same cells
+def lamp_uv(name, s, t):
+    k = LAMP_CELLS.index(name); x0, y0, w, h = RT_REGIONS['lamps']
+    cx, cy = x0 + (k % 8)*55, y0 + (k // 8)*22
+    return ((cx + 1 + s*53)/RT_W, 1.0 - (cy + 1 + (1.0 - t)*20)/RT_H)
 def rt_uv(name, s, t):
     """s, t in 0..1 across the region (t = 0 at the bottom edge) -> render texture UV."""
     x, y, w, h = RT_REGIONS[name]
@@ -472,13 +496,72 @@ def well(fr, outline, depth, x, y, lip=0.004):
             face_toward('cockpit_int', ring, fr.n, paint='dark')
             edge = [fr.p(*grow(a, lip), 0.002), fr.p(*grow(b, lip), 0.002), fr.p(*grow(b, lip), 0.0), fr.p(*grow(a, lip), 0.0)]
             face_toward('cockpit_int', edge, vsub(edge[0], fr.p(cx, cy, 0.0)), paint='dark')
-def gauge(x, y, r, face, n=16):
+NEEDLES = {}   # needle part -> pivot frame (the plugin turns it about the gauge axis, 0 deg = 12 o'clock)
+def needle_part(fr, gid, length, width, z, reg='ndl', tail=0.18):
+    part = 'ndl_' + gid
+    o = fr.at(0, 0, z)
+    u = region_uv(reg, 0.5, 0.5)
+    pts = [(-width/2, -length*tail), (width/2, -length*tail), (width/2, length*0.86), (0, length), (-width/2, length*0.86)]
+    face_toward(part, [o.p(a, b) for a, b in pts], fr.n, uvs=[u]*len(pts))
+    hub = circle(max(width*1.4, 0.0035), 8)()
+    face_toward(part, [o.p(a, b, 0.0006) for a, b in hub], fr.n, paint='dark')
+    PIVOTS[part] = o.p(0, 0); NEEDLES[part] = o
+def compass_card(fr, gid, r, z):
+    part = 'ndl_' + gid
+    o = fr.at(0, 0, z); pts = circle(r, 24)()
+    face_toward(part, [o.p(a, b) for a, b in pts], fr.n, uvs=[region_uv('card', 0.5 + a/(2*r), 0.5 + b/(2*r)) for a, b in pts])
+    PIVOTS[part] = o.p(0, 0); NEEDLES[part] = o
+# face -> needles: (id suffix, length as a fraction of r, width in m, z, colour region)
+LIVE = {'asi': [('asi', 0.80, 0.0028, -0.0090, 'ndl')], 'alt': [('alt', 0.82, 0.0024, -0.0084, 'ndl'), ('altk', 0.55, 0.0042, -0.0092, 'ndl')],
+        'rpm': [('rpm', 0.80, 0.0026, -0.0090, 'ndl')], 'egt': [('thr', 0.80, 0.0026, -0.0090, 'ndl')], 'fuel': [('fuel', 0.80, 0.0028, -0.0090, 'ndl')],
+        'ff': [('ff', 0.80, 0.0028, -0.0090, 'ndl')], 'hyd': [('hyd', 0.80, 0.0028, -0.0090, 'ndl')], 'oil': [('oil', 0.80, 0.0028, -0.0090, 'ndl')],
+        'nozl': [('noz', 0.80, 0.0028, -0.0090, 'ndl')], 'brk': [('brk', 0.80, 0.0028, -0.0090, 'ndl')], 'volt': [('volt', 0.80, 0.0028, -0.0090, 'ndl')]}
+def attitude_ball(fr, r, gid):
+    rb = 0.040                                   # ball radius; its front sits just inside the lip, the well's back plate hides the rest
+    c0 = fr.p(0, 0, -0.004 - rb)
+    part = 'adi' + gid
+    # sphere in aircraft axes (y up, z forward) so the plugin can set its world rotation directly
+    NU, NV = 32, 16
+    def sph(i, j):
+        phi = -math.pi + 2*math.pi*i/NU; lat = -math.pi/2 + math.pi*j/NV
+        return (math.cos(lat)*math.sin(phi), math.sin(lat), -math.cos(lat)*math.cos(phi)), phi, lat
+    for i in range(NU):
+        for j in range(NV):
+            q = [sph(i, j), sph(i + 1, j), sph(i + 1, j + 1), sph(i, j + 1)]
+            pm = (q[0][1] + q[1][1])/2
+            off = round(pm/math.pi)                 # u = 0.5 + phi/pi wraps every half turn; keep each face in one wrap
+            uvs = [region_uv('ball', min(max(0.5 + (ph - off*math.pi)/math.pi, 0.0), 1.0), 0.5 + 0.5*math.sin(la)) for _, ph, la in q]
+            pts = [vadd(c0, vmul(d, rb)) for d, _, _ in q]
+            if j == 0: pts, uvs = [pts[0], pts[2], pts[3]], [uvs[0], uvs[2], uvs[3]]
+            elif j == NV - 1: pts, uvs = pts[:3], uvs[:3]
+            face_toward(part, pts, vsub(vmul(vadd(pts[0], pts[2]), 0.5), c0), uvs=uvs)
+    PIVOTS[part] = c0; MOVERS[part] = c0
+    # bank scale ring on the back plate round the visible cap, and the fixed amber aircraft symbol in front of the ball
+    ri, ro = 0.0325, r + 0.003
+    ring = [(ri*math.cos(2*math.pi*k/32), ri*math.sin(2*math.pi*k/32)) for k in range(33)]
+    outer = [(ro*math.cos(2*math.pi*k/32), ro*math.sin(2*math.pi*k/32)) for k in range(33)]
+    for k in range(32):
+        q = [ring[k], ring[k + 1], outer[k + 1], outer[k]]
+        face_toward('cockpit_int', [fr.p(a, b, -0.0195) for a, b in q], fr.n,
+                    uvs=[region_uv('adi', 0.5 + a/(2*ro), 0.5 + b/(2*ro)) for a, b in q])
+    au = region_uv('amb', 0.5, 0.5)
+    for a0, a1, b0, b1 in ((-0.026, -0.009, -0.0012, 0.0012), (0.009, 0.026, -0.0012, 0.0012), (-0.0016, 0.0016, -0.0016, 0.0016)):
+        face_toward('cockpit_int', [fr.p(a0, b0, -0.0015), fr.p(a1, b0, -0.0015), fr.p(a1, b1, -0.0015), fr.p(a0, b1, -0.0015)], fr.n, uvs=[au]*4)
+    for s_ in (-1, 1):   # wing drops of the W
+        face_toward('cockpit_int', [fr.p(s_*0.009, 0.0012, -0.0015), fr.p(s_*0.0105, -0.0012, -0.0015), fr.p(s_*0.0065, -0.006, -0.0015), fr.p(s_*0.005, -0.0045, -0.0015)], fr.n, uvs=[au]*4)
+    # bank pointer at 12 o'clock
+    face_toward('cockpit_int', [fr.p(0, ri + 0.0005, -0.0015), fr.p(-0.003, ri + 0.006, -0.0015), fr.p(0.003, ri + 0.006, -0.0015)], fr.n, uvs=[au]*3)
+
+MOVERS = {}   # parts the plugin moves that are not needles (attitude balls, rudder pedals): part -> pivot
+def gauge(x, y, r, face, n=16, gid=''):
     fr = panel_frame(x, y)
+    if face == 'o2':
+        compass_card(fr, 'hdg' + gid, r*0.80, -0.0100)
+    for suf, ln, wd, z, reg in LIVE.get(face, []):
+        needle_part(fr, suf + gid, r*ln, wd, z, reg)
     well(fr, circle(r + 0.003, n)(), WELL, x, y)
-    if face == 'adi':       # live attitude ball: the stock ArtificialHorizon app draws into the tac screen texture
-        pts = circle(r, n)(); 
-        face_toward('tacScreen', [fr.p(a, b, -0.012) for a, b in pts], fr.n, 'tacScreenDisplay',
-                    [rt_uv('adi', 0.5 + a/(2*r), 0.5 + b/(2*r)) for a, b in pts])
+    if face == 'adi':       # analog attitude ball (2026-10-19): a real sphere the plugin keeps level with the horizon
+        attitude_ball(fr, r, gid)
     else:
         prism('cockpit_int', fr, circle(r, n), 0.0015, decal=face, proud=-0.012, decal_box=(2*r, 2*r))
 def inset_panel(x, y, shape, decal, depth=0.012, **kw):
@@ -491,16 +574,24 @@ def inset_panel(x, y, shape, decal, depth=0.012, **kw):
 def standby():
     for s in (-1, 1):
         x = s*0.342
-        gauge(x, SB_Y - 0.006, 0.046, 'adi', 24)          # standby gauges sized to read from the seat
-        gauge(x - 0.093, SB_Y, 0.033, 'asi', 18)       # cluster pulled in so no hole crosses the panel hinge
-        gauge(x + 0.093, SB_Y, 0.033, 'alt', 18)
+        sd = '_L' if s < 0 else '_R'
+        gauge(x, SB_Y - 0.006, 0.046, 'adi', 24, sd)      # standby gauges sized to read from the seat
+        gauge(x - 0.093, SB_Y, 0.033, 'asi', 18, sd)       # cluster pulled in so no hole crosses the panel hinge
+        gauge(x + 0.093, SB_Y, 0.033, 'alt', 18, sd)
         inset_panel(s*0.141, SB_Y - 0.005, rrect(0.100, 0.105, 0.008, 2), 'keypad')
         # master arm / jettison / ECM switch box with gear and flap lights, one per pilot where the caution grid was
         inset_panel(s*0.60, SW_Y, rect(0.088, 0.16), 'cswitch')
     # shared engine stack (analog) on the centre lower panel
     for dx in (-0.045, 0.045):
-        gauge(dx, -0.075, 0.030, 'rpm')
-        gauge(dx, -0.152, 0.027, 'egt')
+        sd = '_L' if dx < 0 else '_R'
+        gauge(dx, -0.075, 0.030, 'rpm', 16, sd)
+        gauge(dx, -0.152, 0.027, 'egt', 16, sd)
+        # engine fire lamp under each engine's pair, lit through the screen texture
+        fr = panel_frame(dx, -0.198)
+        prism('cockpit_int', fr, rrect(0.050, 0.020, 0.003, 2), 0.010, proud=0.006, paint='dark', side_paint='dark')
+        lp = rect(0.044, 0.015)()
+        face_toward('tacScreen', [fr.p(a, b, 0.0066) for a, b in lp], fr.n, 'tacScreenDisplay',
+                    [lamp_uv('FIRE' + sd.replace('_', ' '), 0.5 + a/0.044, 0.5 + b/0.015) for a, b in lp])
     # second analog row under each pilot's standby gauges and keypad (outboard to inboard)
     for s, faces in ((-1, ('ff', 'fuel', 'hyd', 'oil')), (1, ('nozl', 'brk', 'volt', 'o2'))):
         for x, face in zip((0.434, 0.342, 0.250, 0.158), faces):
@@ -611,18 +702,34 @@ def yokes():
                   decal_box=(0.4, 0.4))                         # hat switch
             top = Frame(vadd(ht, vmul(vnorm(vsub(ht, hb)), 0.028)), vmul(W.u, -1), W.n, vnorm(vsub(ht, hb)))
             prism('yoke_wheel_' + side, top.at(-g*0.006, 0.004), circle(0.006, 6), 0.004, proud=0.004, decal='red')   # pickle
-        # rudder pedals: ribbed faces with toe-brake bands on swing arms from a cross shaft at the front of the heel rest
+        # rudder pedals (2026-10-25: pedals must slide on a real mechanism, not hover). Each pedal rides a carriage in a
+        # floor channel and slides +-6 cm fore and aft with the rudder (PB-22 plugin moves the pedal part along its local z).
         piv_z, piv_y = 11.47, FW_Y + 0.045
-        tube('cockpit_int', (x - 0.14, piv_y, piv_z), (x + 0.14, piv_y, piv_z), 0.016, 8)
-        for bx in (x - 0.15, x + 0.15):
-            boxw('cockpit_int', (bx, (FW_Y + piv_y)/2 + 0.01, piv_z), (0.025, piv_y - FW_Y + 0.04, 0.06), paint='dark', skip=('-y',))
+        TRAVEL = 0.06; CZ = 11.33                    # carriage centre at rest
+        base = FW_Y + 0.006                          # top of the heel-rest tread plate
         for dx in (-0.09, 0.09):
-            fr = Frame((x+dx, FW_Y + 0.08, 11.30), (1, 0, 0), (0, 1, 0), (0, 0, -1)).pitch(-20)
-            prism('cockpit_int', fr, rrect(0.075, 0.13, 0.012, 2), 0.025, chamfer=0.004, paint='dark', back=True, decal='pedal',
+            px = x + dx
+            # static channel: base plate, two side rails and end stops, long enough for the carriage at both ends of travel
+            L = 0.11 + 2*TRAVEL + 0.03
+            boxw('cockpit_int', (px, base + 0.003, CZ), (0.074, 0.006, L), paint='dark', skip=('-y',))
+            for rx in (-0.033, 0.033):
+                boxw('cockpit_int', (px + rx, base + 0.014, CZ), (0.008, 0.022, L), paint='dark', skip=('-y',))
+                boxw('cockpit_int', (px + rx, base + 0.027, CZ), (0.014, 0.004, L), paint='paint', skip=('-y',))   # bright lip on the rail
+            for ez in (CZ - L/2 + 0.006, CZ + L/2 - 0.006):
+                boxw('cockpit_int', (px, base + 0.012, ez), (0.058, 0.018, 0.012), paint='paint', skip=('-y',))
+            pdl = 'pedal_' + side + ('L' if dx < 0 else 'R')       # slides in its channel with the rudder (PB-22 plugin)
+            PIVOTS[pdl] = MOVERS[pdl] = (px, piv_y, piv_z)
+            # carriage: runs between the rails on the base plate, with a bearing block each end
+            boxw(pdl, (px, base + 0.016, CZ), (0.050, 0.020, 0.11), paint='dark', skip=('-y',))
+            for ez in (CZ - 0.045, CZ + 0.045):
+                boxw(pdl, (px, base + 0.012, ez), (0.064, 0.012, 0.016), paint='paint', skip=('-y',))
+            # pedal face, leaning back 20 degrees, standing on the carriage on a heel hinge block and a rear brace
+            fr = Frame((px, FW_Y + 0.095, 11.30), (1, 0, 0), (0, 1, 0), (0, 0, -1)).pitch(-20)
+            prism(pdl, fr, rrect(0.075, 0.13, 0.012, 2), 0.025, chamfer=0.004, paint='dark', back=True, decal='pedal',
                   decal_box=(0.075, 0.13))
-            back_c = fr.p(0, 0, -0.026)
-            tube('cockpit_int', back_c, (x + dx, piv_y, piv_z), 0.011, 6)
-            tube('cockpit_int', fr.p(0, 0.05, -0.026), (x + dx, piv_y + 0.01, piv_z - 0.02), 0.008, 6)
+            heel = fr.p(0, -0.065, -0.012)
+            boxw(pdl, (px, (heel[1] + base + 0.026)/2, heel[2]), (0.06, heel[1] - base - 0.026 + 0.012, 0.022), paint='dark', skip=('-y',))
+            tube(pdl, fr.p(0, 0.04, -0.026), (px, base + 0.026, CZ + 0.05), 0.008, 6)
 
 # ---- footwell: raised heel rest under the pedals
 FW_Y = FLOOR + 0.12 + (RAISE - 0.15)    # heel rest follows the seat raise
@@ -723,9 +830,82 @@ def deck(part='cockpit_int', mat='PB22_cockpit', paint='dark'):
             q = [a[k], b[k], lo_b, lo_a]
             poly(part, q if sgn > 0 else q[::-1], mat, None, paint)
 
+# ---- console block (2026-10-25, 0.9.3 test): seen through the side glass from outside, the space under the glareshield deck was
+# open to daylight. It is now one closed volume: hull-hugging side walls from the deck edge down to the panel bottom, a floor at the
+# panel bottom, a back wall behind the panel and a front cap, so the console reads as solid from outside and from the seats.
+_HULL = None
+def hull_x(y, z):
+    """inner half-width of the cabin (skin or glass) at height y and station z, by casting a ray outboard from the centreline"""
+    global _HULL
+    import numpy as np
+    if _HULL is None:
+        V = []; F = []; keep = False
+        for l in open(os.path.join(CK, 'ctx045.obj')):
+            if l.startswith('o '): keep = l[2:].startswith(('cockpit__', 'nose__', 'canopy__'))
+            elif l.startswith('v '): V.append([float(t) for t in l.split()[1:4]])
+            elif l.startswith('f ') and keep:
+                i = [int(t.split('/')[0]) - 1 for t in l.split()[1:]]
+                for k in range(1, len(i) - 1): F.append((i[0], i[k], i[k + 1]))
+        V = np.array(V); T = V[np.array(F)]
+        _HULL = T[(T[:, :, 0].max(1) > 0.05)]          # starboard half only (the hull is symmetric)
+    T = _HULL
+    a, b, cc = T[:, 0], T[:, 1], T[:, 2]
+    o = np.array([0.0, y, z]); d = np.array([1.0, 0.0, 0.0])
+    e1, e2 = b - a, cc - a; pv = np.cross(d, e2); det = (e1*pv).sum(1)
+    ok = np.abs(det) > 1e-12; inv = np.where(ok, 1.0/np.where(ok, det, 1.0), 0.0)
+    tv = o - a; u = (tv*pv).sum(1)*inv; qv = np.cross(tv, e1); v = (d*qv).sum(1)*inv; t = (e2*qv).sum(1)*inv
+    hit = ok & (u >= 0) & (v >= 0) & (u + v <= 1) & (t > 0.05)
+    if not hit.any(): return None
+    th = t[hit]; return float(th[th >= 0.6*th.max()].min())   # nearest skin or glass, ignoring inner bays (nose wheel well) near the centreline
+
+CB_BOT = PANEL_BOT                     # block floor: the panel bottom, so the footwell below keeps its knee room
+CB_ZS = sorted(set([11.30] + [z for z, _, _ in DECK if 11.30 < z < 13.42] + [round(11.30 + 0.04*k, 2) for k in range(1, 53)] + [13.42]))   # dense, so the walls follow the hull curve between deck stations
+def _deck_y(z):
+    for (z0, y0, _), (z1, y1, _) in zip(DECK, DECK[1:]):
+        if z0 <= z <= z1: return y0 + (y1 - y0)*(z - z0)/(z1 - z0)
+    return DECK[0][1] if z < DECK[0][0] else DECK[-1][1]
+def _deck_w(z):
+    for (z0, _, w0), (z1, _, w1) in zip(DECK, DECK[1:]):
+        if z0 <= z <= z1: return w0 + (w1 - w0)*(z - z0)/(z1 - z0)
+    return DECK[0][2] if z < DECK[0][0] else DECK[-1][2]
+def console_block(part='cockpit_int', mat='PB22_cockpit', paint='dark'):
+    # walls sit 3 cm inside the skin so the 2.2 cm dark frame strip round the window openings (pb22_cabin_build) stays in front of
+    # them; the top row meets the deck skirt at the hull so no light gets in between
+    INSET = 0.025
+    def wall_pts(z):
+        top = _deck_y(z) - 0.035                            # tucks under the deck skirt, which hangs 4 cm
+        hs = [top - (top - CB_BOT)*k/6.0 for k in range(7)]
+        w_deck = _deck_w(z)
+        def hmin(y):          # narrowest cabin width around this point, so the straight wall pieces between samples stay inside too
+            hs_ = [hull_x(y + dy, z + dz) for dy in (-0.045, 0.0, 0.045) for dz in (-0.04, 0.0, 0.04)]
+            hs_ = [h for h in hs_ if h is not None]
+            return min(hs_) if hs_ else 0.7
+        return [(w_deck if k == 0 else max(0.05, hmin(y) - INSET), y, z) for k, y in enumerate(hs)]
+    cols = [wall_pts(z) for z in CB_ZS]
+    for s in (-1, 1):
+        for A, B in zip(cols, cols[1:]):
+            for k in range(len(A) - 1):
+                q = [(s*A[k][0], A[k][1], A[k][2]), (s*B[k][0], B[k][1], B[k][2]), (s*B[k+1][0], B[k+1][1], B[k+1][2]), (s*A[k+1][0], A[k+1][1], A[k+1][2])]
+                face_toward(part, q[:3], (s, 0, 0), mat, None, paint); face_toward(part, [q[0], q[2], q[3]], (s, 0, 0), mat, None, paint)   # face out, toward the glass
+    # floor at the panel bottom, seen from below (the footwell) and above (inside the block)
+    for A, B in zip(cols, cols[1:]):
+        a, b = A[-1], B[-1]
+        q = [(-a[0], CB_BOT, a[2]), (a[0], CB_BOT, a[2]), (b[0], CB_BOT, b[2]), (-b[0], CB_BOT, b[2])]
+        face_toward(part, q[:3], (0, -1, 0), mat, None, paint); face_toward(part, [q[0], q[2], q[3]], (0, -1, 0), mat, None, paint)
+    # back wall just behind the panel slabs (hidden by the panel from the seats), and the front cap inside the nose
+    for z, want in ((CB_ZS[0], (0, 0, -1)), (CB_ZS[-1], (0, 0, 1))):
+        col = wall_pts(z); top = _deck_y(z)
+        rows = [(-p[0], p[1], z) for p in col] ; rows_r = [(p[0], p[1], z) for p in col]
+        for k in range(len(col) - 1):
+            q = [rows[k], rows_r[k], rows_r[k+1], rows[k+1]]
+            face_toward(part, q[:3], want, mat, None, paint); face_toward(part, [q[0], q[2], q[3]], want, mat, None, paint)
+        q = [(-col[0][0], col[0][1], z), (col[0][0], col[0][1], z), (col[0][0], top + 0.001, z), (-col[0][0], top + 0.001, z)]
+        face_toward(part, q[:3], want, mat, None, paint); face_toward(part, [q[0], q[2], q[3]], want, mat, None, paint)
+
 def simple():
     P = 'cockpit_int_simple'
     deck(P, 'Matte_black')
+    console_block(P, 'Matte_black', 'paint')
     boxw(P, (0, (PANEL_TOP + PANEL_BOT)/2, face_z(0.0) + 0.05), (1.46, PANEL_TOP - PANEL_BOT, 0.18), 'Matte_black', skip=('-y',))
     boxw(P, (0, HOOD_TOP - 0.02, 11.30), (1.46, 0.05, 0.36), 'Matte_black')
     boxw(P, (0, (FLOOR + PED_TOP)/2, 10.70), (0.26, PED_TOP - FLOOR, 0.80), 'Matte_black', skip=('-y',))
@@ -735,9 +915,26 @@ def simple():
     boxw('rear_int_simple', (0, 0.05, 7.66), (1.42, 0.95, 0.10), 'Matte_black')
     boxw('rear_int_simple', (0, -0.52, 7.90), (1.42, 0.56, 0.44), 'Matte_black', skip=('-y',))
 
+def clamp_to_hull(inset=0.025):
+    # last pass: any vertex outboard of the skin or glass is pulled in to sit 2.5 cm inside it; the cabin section is
+    # convex, so the faces between pulled-in corners stay inside too
+    moved = 0
+    for name, p in PARTS.items():
+        V = p['v']
+        for i, v in enumerate(V):
+            if abs(v[0]) < 0.55: continue
+            h = [hull_x(v[1] + dy, v[2] + dz) for dy in (-0.03, 0, 0.03) for dz in (-0.03, 0, 0.03)]
+            h = [t for t in h if t]
+            if not h: continue
+            lim = min(h) - inset
+            if abs(v[0]) > lim:
+                V[i] = (math.copysign(lim, v[0]),) + tuple(v[1:]); moved += 1
+    CLAMPED[0] = moved
+
+CLAMPED = [0]
 def build_all():
-    PARTS.clear(); SCREENS.clear(); PIVOTS.clear(); PIVOTS['throttle'] = THROTTLE_PIVOT
-    panel_body(); closeouts(); hood(); deck(); displays(); standby(); pedestal(); consoles(); yokes(); footwell(); partition(); rear(); simple()
+    PARTS.clear(); SCREENS.clear(); PIVOTS.clear(); NEEDLES.clear(); MOVERS.clear(); PIVOTS['throttle'] = THROTTLE_PIVOT
+    panel_body(); closeouts(); hood(); deck(); console_block(); displays(); standby(); pedestal(); consoles(); yokes(); footwell(); partition(); rear(); simple(); clamp_to_hull()
     return PARTS
 
 def tri_count(parts=None):

@@ -104,7 +104,9 @@ def toggle(cx, cy, s=1.0, guard=False, label=None, lab_px=11):
         for k in range(-g, g, 6): db.line((cx + k, cy + int(12*s), cx + k + 4, cy + int(12*s)), fill=YEL, width=2)
     if label: text(cx, cy - int(19*s), label, lab_px)
 
-def lamp(box, col, lit=False, label=None, px=10):
+LAMPS = []
+def lamp(box, col, lit=False, label=None, px=10, live=None):
+    if live: LAMPS.append((live, box)); lit = False
     fill(box, tuple(int(c*(0.95 if lit else 0.35)) for c in col), 150, 200)
     db.rectangle(box, outline=(20, 20, 22), width=1)
     if label: text((box[0] + box[2])/2, (box[1] + box[3])/2, label, px, (25, 22, 18) if lit else (150, 148, 138), engrave=False)
@@ -179,58 +181,79 @@ def numbers(cx, cy, r, a0, a1, vals, px):
         a = math.radians(a0 + (a1 - a0)*k/(len(vals) - 1))
         text(cx + r*0.60*math.sin(a), cy - r*0.60*math.cos(a), str(v), px, engrave=False)
 
-# attitude: sky/ground ball, fixed aircraft symbol
-x, y, w, h = R('adi'); cx, cy, r = x + w/2, y + h/2, w/2 - 2
+# attitude (2026-10-19: analog ball): bank scale ring round the ball, and the ball's own skin
+x, y, w, h = R('adi'); cx, cy, r = x + w/2, y + h/2, w/2
 fill(rr(x, y, w, h), DIAL, 128, 170)
-ball = Image.new('RGB', (w, h), (0, 0, 0)); bd = ImageDraw.Draw(ball)
-bd.rectangle((0, 0, w, h*0.54), fill=(70, 110, 150)); bd.rectangle((0, h*0.54, w, h), fill=(92, 66, 44))
-bd.line((0, h*0.54, w, h*0.54), fill=WHITE, width=2)
-for k in (-2, -1, 1, 2):
-    yy = h*0.54 - k*14; L = 18 if k % 2 == 0 else 10
-    bd.line((w/2 - L, yy, w/2 + L, yy), fill=WHITE, width=1)
-ball = ball.rotate(-8, resample=Image.BICUBIC)
-mask = Image.new('L', (w, h), 0); ImageDraw.Draw(mask).ellipse((10, 10, w - 10, h - 10), fill=255)
-B.paste(ball, (x, y), mask)
-db.ellipse((x + 10, y + 10, x + w - 10, y + h - 10), outline=(30, 30, 32), width=3)
-ticks(cx, cy, r*0.93, -60, 60, 4, 1, 2)
-db.polygon([(cx, cy - r*0.93 + 2), (cx - 6, cy - r*0.93 + 12), (cx + 6, cy - r*0.93 + 12)], fill=AMBER)
-db.line((cx - 34, cy + 2, cx - 12, cy + 2), fill=AMBER, width=4); db.line((cx + 12, cy + 2, cx + 34, cy + 2), fill=AMBER, width=4)
-db.line((cx - 12, cy + 2, cx - 6, cy + 9), fill=AMBER, width=4); db.line((cx + 12, cy + 2, cx + 6, cy + 9), fill=AMBER, width=4)
-db.ellipse((cx - 3, cy - 1, cx + 3, cy + 5), fill=AMBER)
+for ang in (-60, -45, -30, -20, -10, 0, 10, 20, 30, 45, 60):
+    a_ = math.radians(ang); big = ang % 30 == 0
+    r0 = r*(0.70 if big else 0.76)
+    db.line((cx + r0*math.sin(a_), cy - r0*math.cos(a_), cx + r*0.92*math.sin(a_), cy - r*0.92*math.cos(a_)), fill=WHITE, width=3 if big else 2)
+x, y, w, h = R('ball')
+SKY, GND = (96, 136, 176), (74, 52, 34)
+for row in range(h):
+    v = 1.0 - (row + 0.5)/h; lat = math.degrees(math.asin(max(-1.0, min(1.0, 2*v - 1))))
+    db.line((x, y + row, x + w - 1, y + row), fill=SKY if lat >= 0 else GND)
+def lat_row(lat): return y + (1.0 - (0.5 + 0.5*math.sin(math.radians(lat))))*h
+db.line((x, lat_row(0), x + w - 1, lat_row(0)), fill=WHITE, width=2)
+for lat in range(-80, 85, 5):
+    if lat == 0: continue
+    yy = lat_row(lat); big = lat % 10 == 0
+    half = w*(0.09 if big else 0.04)
+    db.line((x + w/2 - half, yy, x + w/2 + half, yy), fill=WHITE if lat > 0 else (230, 225, 210), width=1)
+    if big and abs(lat) <= 60:
+        for sx in (-1, 1):
+            text(x + w/2 + sx*(half + 7), yy, str(abs(lat)), 8, WHITE, engrave=False)
+fill(rr(*R('amb')), AMBER, 140, 200)
 
 cx, cy, r = dial_base('asi'); ticks(cx, cy, r, -150, 150, 6); numbers(cx, cy, r, -150, 150, [0, 2, 4, 6, 8, 10, 12], 15)
-text(cx, cy + r*0.32, 'KT x100', 10, GREY, engrave=False); needle(cx, cy, r, 40)
+text(cx, cy + r*0.32, 'KT x100', 10, GREY, engrave=False)
 cx, cy, r = dial_base('alt'); ticks(cx, cy, r, 0, 324, 9); numbers(cx, cy, r, 0, 324, list(range(0, 10)), 15)
 fill((int(cx - 18), int(cy + r*0.18), int(cx + 18), int(cy + r*0.42)), (8, 8, 9)); text(cx, cy + r*0.30, '12.4', 11, engrave=False)
-text(cx, cy - r*0.28, 'ALT', 10, GREY, engrave=False); needle(cx, cy, r, 140)
-cx, cy, r = dial_base('rpm'); ticks(cx, cy, r, -135, 135, 5); numbers(cx, cy, r, -135, 135, [0, 2, 4, 6, 8, 10], 15)
+text(cx, cy - r*0.28, 'ALT', 10, GREY, engrave=False)
+cx, cy, r = dial_base('rpm'); ticks(cx, cy, r, -135, 135, 5); numbers(cx, cy, r, -135, 135, [0, 20, 40, 60, 80, 100], 13)
 db.arc((cx - r*0.9, cy - r*0.9, cx + r*0.9, cy + r*0.9), 30, 45, fill=RED, width=4)
-text(cx, cy + r*0.38, 'RPM x10', 11, GREY, engrave=False); needle(cx, cy, r, 85)
-cx, cy, r = dial_base('egt'); ticks(cx, cy, r, -135, 135, 4); numbers(cx, cy, r, -135, 135, [2, 4, 6, 8, 10], 15)
-db.arc((cx - r*0.9, cy - r*0.9, cx + r*0.9, cy + r*0.9), -10, 45, fill=AMBER, width=4)
-text(cx, cy + r*0.38, 'TGT x100', 10, GREY, engrave=False); needle(cx, cy, r, 60)
+text(cx, cy + r*0.38, 'RPM %', 11, GREY, engrave=False)
+cx, cy, r = dial_base('egt'); ticks(cx, cy, r, -135, 135, 4); numbers(cx, cy, r, -135, 135, [0, 4, 8, 12, 16], 15)
+db.arc((cx - r*0.9, cy - r*0.9, cx + r*0.9, cy + r*0.9), -225 + 270*0.62, 45, fill=AMBER, width=4)
+text(cx, cy + r*0.38, 'THR kN x10', 10, GREY, engrave=False)
 cx, cy, r = dial_base('fuel'); ticks(cx, cy, r, -120, 120, 4); numbers(cx, cy, r, -120, 120, ['E', '1/4', '1/2', '3/4', 'F'], 11)
-text(cx, cy + r*0.38, 'FUEL', 10, GREY, engrave=False); needle(cx, cy, r, 70)
+text(cx, cy + r*0.38, 'FUEL', 10, GREY, engrave=False)
 cx, cy, r = dial_base('ff'); ticks(cx, cy, r, -135, 135, 5); numbers(cx, cy, r, -135, 135, [0, 2, 4, 6, 8, 10], 15)
-text(cx, cy + r*0.38, 'FF T/H', 10, GREY, engrave=False); needle(cx, cy, r, 20)
+text(cx, cy + r*0.38, 'FF T/H', 10, GREY, engrave=False)
 cx, cy, r = dial_base('hyd'); ticks(cx, cy, r, -135, 135, 4); numbers(cx, cy, r, -135, 135, [0, 1, 2, 3, 4], 15)
 db.arc((cx - r*0.9, cy - r*0.9, cx + r*0.9, cy + r*0.9), -225 + 270*0.62, -225 + 270*0.80, fill=GREEN, width=4)
-text(cx, cy + r*0.38, 'HYD L R', 10, GREY, engrave=False); needle(cx, cy, r, 55); needle(cx, cy, r*0.8, 62, col=YEL, w=2)
+text(cx, cy + r*0.38, 'HYD x1000', 10, GREY, engrave=False)
 cx, cy, r = dial_base('oil'); ticks(cx, cy, r, -135, 135, 5); numbers(cx, cy, r, -135, 135, [0, 1, 2, 3, 4, 5], 15)
 db.arc((cx - r*0.9, cy - r*0.9, cx + r*0.9, cy + r*0.9), -225, -225 + 270*0.12, fill=RED, width=4)
-text(cx, cy + r*0.38, 'OIL P', 10, GREY, engrave=False); needle(cx, cy, r, 10)
+text(cx, cy + r*0.38, 'OIL P', 10, GREY, engrave=False)
 cx, cy, r = dial_base('nozl'); ticks(cx, cy, r, -135, 135, 5); numbers(cx, cy, r, -135, 135, [0, 20, 40, 60, 80, 100], 13)
 db.arc((cx - r*0.9, cy - r*0.9, cx + r*0.9, cy + r*0.9), -225 + 270*0.7, 45, fill=AMBER, width=4)
-text(cx, cy + r*0.38, 'NOZ %', 10, GREY, engrave=False); needle(cx, cy, r, -100); needle(cx, cy, r*0.8, -95, col=YEL, w=2)
+text(cx, cy + r*0.38, 'NOZ %', 10, GREY, engrave=False)
 cx, cy, r = dial_base('brk'); ticks(cx, cy, r, -135, 135, 4); numbers(cx, cy, r, -135, 135, [0, 5, 10, 15, 20], 14)
 db.arc((cx - r*0.9, cy - r*0.9, cx + r*0.9, cy + r*0.9), -225 + 270*0.55, -225 + 270*0.85, fill=GREEN, width=4)
-text(cx, cy + r*0.38, 'BRAKE L R', 9, GREY, engrave=False); needle(cx, cy, r, 30); needle(cx, cy, r*0.8, 38, col=YEL, w=2)
+text(cx, cy + r*0.38, 'BRAKE x100', 9, GREY, engrave=False)
 cx, cy, r = dial_base('volt'); ticks(cx, cy, r, -135, 135, 4); numbers(cx, cy, r, -135, 135, [0, 10, 20, 30, 40], 14)
 db.arc((cx - r*0.9, cy - r*0.9, cx + r*0.9, cy + r*0.9), -225 + 270*0.62, -225 + 270*0.75, fill=GREEN, width=4)
-text(cx, cy + r*0.38, 'DC VOLTS', 9, GREY, engrave=False); needle(cx, cy, r, 45)
-cx, cy, r = dial_base('o2'); ticks(cx, cy, r, -120, 120, 4); numbers(cx, cy, r, -120, 120, ['E', '1/4', '1/2', '3/4', 'F'], 11)
-db.arc((cx - r*0.9, cy - r*0.9, cx + r*0.9, cy + r*0.9), -210, -210 + 240*0.15, fill=RED, width=4)
-text(cx, cy + r*0.38, 'OXYGEN', 10, GREY, engrave=False); needle(cx, cy, r, 85)
+text(cx, cy + r*0.38, 'DC VOLTS', 9, GREY, engrave=False)
+cx, cy, r = dial_base('o2')
+db.polygon([(cx, cy - r*0.82), (cx - 7, cy - r*0.98), (cx + 7, cy - r*0.98)], fill=AMBER)
+for k in range(0, 360, 45):
+    a_ = math.radians(k); db.line((cx + r*0.86*math.sin(a_), cy - r*0.86*math.cos(a_), cx + r*0.97*math.sin(a_), cy - r*0.97*math.cos(a_)), fill=WHITE, width=2)
+# compass card (turned by the plugin so the heading sits under the lubber line)
+x, y, w, h = R('card'); ccx, ccy, cr = x + w/2, y + h/2, w/2 - 1
+db.ellipse((x, y, x + w - 1, y + h - 1), fill=DIAL)
+for k in range(0, 360, 5):
+    a_ = math.radians(k); big = k % 30 == 0; mid = k % 10 == 0
+    r0 = cr*(0.78 if big else (0.85 if mid else 0.90))
+    db.line((ccx + r0*math.sin(a_), ccy - r0*math.cos(a_), ccx + cr*0.98*math.sin(a_), ccy - cr*0.98*math.cos(a_)), fill=WHITE, width=2 if big else 1)
+for k, lab in ((0, 'N'), (30, '3'), (60, '6'), (90, 'E'), (120, '12'), (150, '15'), (180, 'S'), (210, '21'), (240, '24'), (270, 'W'), (300, '30'), (330, '33')):
+    a_ = math.radians(k); px_ = 16 if lab in 'NESW' else 12
+    t_ = Image.new('L', (40, 24), 0); ImageDraw.Draw(t_).text((20, 12), lab, font=font(px_), fill=255, anchor='mm')
+    t_ = t_.rotate(-k, resample=Image.BICUBIC, expand=True)
+    col_ = AMBER if lab == 'N' else WHITE
+    B.paste(Image.new('RGB', t_.size, col_), (int(ccx + cr*0.60*math.sin(a_) - t_.size[0]/2), int(ccy - cr*0.60*math.cos(a_) - t_.size[1]/2)), t_)
+db.line((ccx - 10, ccy, ccx + 10, ccy), fill=AMBER, width=3); db.line((ccx, ccy - 12, ccx, ccy + 8), fill=AMBER, width=3)
+fill(rr(*R('ndl')), WHITE, 140, 200); fill(rr(*R('ndly')), YEL, 140, 200)
 cx, cy, r = dial_base('clock'); ticks(cx, cy, r, 0, 330, 11, 5); numbers(cx, cy, r, 0, 330, [12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], 11)
 needle(cx, cy, r*0.7, 300); needle(cx, cy, r, 60, w=2)
 cx, cy, r = dial_base('cabalt'); ticks(cx, cy, r, -135, 135, 5); numbers(cx, cy, r, -135, 135, [0, 2, 4, 6, 8, 10], 11)
@@ -269,14 +292,14 @@ for k, lab in enumerate(('ARM', 'JETT', 'ECM')):
     cyk = y + 46 + k*52
     toggle(int(x + w*0.70), cyk, 1.0, guard=True)
     text(x + w*0.30, cyk, lab, 11, engrave=True)
-lamp((x + 10, y + h - 40, x + 50, y + h - 22), GREEN, True, 'GEAR', 9)
-lamp((x + 56, y + h - 40, x + 98, y + h - 22), AMBER, False, 'FLAP', 9)
-lamp((x + 10, y + h - 18, x + 98, y + h - 4), RED, False, 'MSL WARN', 9)
+lamp((x + 10, y + h - 40, x + 50, y + h - 22), GREEN, True, 'GEAR', 9, live='GEAR')
+lamp((x + 56, y + h - 40, x + 98, y + h - 22), AMBER, False, 'FLAP', 9, live='FLAP')
+lamp((x + 10, y + h - 18, x + 98, y + h - 4), RED, False, 'MSL WARN', 9, live='MSL WARN')
 
 x, y, w, h = panel_plate('gear')
 text(x + w/2, y + 12, 'LANDING GEAR', 12)
 for k, lab in enumerate(('NOSE', 'LEFT', 'RIGHT')):
-    lamp((x + 10 + k*44, y + 26, x + 48 + k*44, y + 46), GREEN, True, lab, 9)
+    lamp((x + 10 + k*44, y + 26, x + 48 + k*44, y + 46), GREEN, True, lab, 9, live=lab)
 db.ellipse((x + w/2 - 24, y + 56, x + w/2 + 24, y + 104), outline=WHITE, width=2)
 text(x + 22, y + 66, 'UP', 11); text(x + 22, y + 98, 'DN', 11)
 for k in range(0, w, 12):
@@ -520,5 +543,11 @@ for cx, cy, kind, r in KNOBS:
     x, y, w, h = ATLAS[n]
     _kn.setdefault(n, []).append(((cx - x)/w, 1.0 - (cy - y)/h, kind, r/w))
 json.dump(_kn, open(os.path.join(CK, 'knobs.json'), 'w'), indent=0)
+_lm = {}
+for name, (x0, y0, x1, y1) in LAMPS:
+    n = _region((x0 + x1)/2, (y0 + y1)/2); x, y, w, h = ATLAS[n]
+    _lm.setdefault(n, []).append((name, (x0 - x)/w, 1.0 - (y1 + 1 - y)/h, (x1 + 1 - x)/w, 1.0 - (y0 - y)/h))
+json.dump(_lm, open(os.path.join(CK, 'lamps.json'), 'w'), indent=0)
+print('lamps', _lm)
 print('knobs', {k: len(v) for k, v in _kn.items()})
 print('atlas written')

@@ -133,6 +133,17 @@ def cutter(name, xmin, xmax, d0, d1, zmin, zmax):
     bm.to_mesh(me); bm.free()
     o = bpy.data.objects.new(name, me); C_TMP.objects.link(o); return o
 
+def prism_cutter(name, xz, d0, d1):
+    """Cutter prism along d with the convex cross-section xz [(x, z), ...]."""
+    me = bpy.data.meshes.new(name); bm = bmesh.new()
+    a = [bm.verts.new((x, Y(d0), z)) for x, z in xz]; b = [bm.verts.new((x, Y(d1), z)) for x, z in xz]
+    n = len(xz)
+    bm.faces.new(a); bm.faces.new(b[::-1])
+    for i in range(n): bm.faces.new((a[i], b[i], b[(i + 1) % n], a[(i + 1) % n]))
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new(name, me); C_TMP.objects.link(o); return o
+
 def apply_cuts(p, cutters):
     me = bpy.data.meshes.new(p.name + '_tmp'); p.mb.bm.to_mesh(me)
     for m in MATS: me.materials.append(m)
@@ -479,6 +490,8 @@ for side, s, num in (('L', -1, 1), ('R', 1, 3)):
         loft(nz.mb, rings, True, True, MECH, smooth=False)
     # liner and afterburner flame holders
     cyl(nz.mb, (xc, Y(33.10), zc), (xc, Y(31.8), zc), 0.50, 0.47, N=40, caps=False, mat=DARK)
+    # outer face of the liner (faces out), so the gaps between the petals show the dark liner rather than see-through
+    cyl(nz.mb, (xc, Y(31.8), zc), (xc, Y(33.10), zc), 0.473, 0.503, N=40, caps=False, mat=DARK)
     for d, r in ((32.1, 0.36), (32.3, 0.22)):
         tube(nz.mb, [(xc + r * math.cos(2 * math.pi * k / 24), Y(d), zc + r * math.sin(2 * math.pi * k / 24)) for k in range(25)], 0.025, N=6, mat=DARK, caps=False)
     cyl(nz.mb, (xc, Y(31.85), zc), (xc, Y(32.35), zc), 0.47, 0.06, N=24, caps=False, mat=DARK)
@@ -501,25 +514,37 @@ for side, s in (('R', 1), ('L', -1)):
     loft(wr.mb, rings, True, True, SKIN)
     # main gear fairing under the glove (streamlined past the trailing edge): the bogie stows flat inside it, outboard of the leg
     gb = part(f'gearbay_{side}')
+    # the top runs at 2.25, up into the glove, so no slit shows between the fairing and the glove underside (the glove
+    # lower skin only rises above that within a few cm of its leading edge); the bottoms are unchanged
+    # flat top under the wing (2026-10-25: the pod hangs below the wing and the glove leading edge stays undisturbed)
     GP = Section([(17.9, 1.96, s * 2.55, prof_rr(0.40, 0.14, 0.05, 0.12)), (18.7, 1.71, s * 3.00, prof_rr(1.00, 0.39, 0.05, 0.30)),
                   (19.15, 1.69, s * 3.36, prof_rr(1.33, 0.41, 0.06, 0.30)), (22.65, 1.69, s * 3.36, prof_rr(1.33, 0.41, 0.06, 0.30)),
                   (23.5, 1.72, s * 3.05, prof_rr(0.98, 0.38, 0.06, 0.28)), (25.0, 1.82, s * 2.85, prof_rr(0.66, 0.28, 0.05, 0.20)),
                   (26.9, 2.00, s * 2.70, prof_rr(0.12, 0.06, 0.04, 0.05))], 64)
     loft(gb.mb, GP.rings(17.9, 26.9, 0.2), True, True, SKIN)
     olo, ohi = sorted((s * OPEN_X[0], s * OPEN_X[1]))
-    # the cavity only rises into the glove where the glove recess is (inboard of 4.15); further out the outboard front
-    # corner of the fairing sits ahead of the glove leading edge, so there the cavity stops under the fairing top skin
-    clo, chi = sorted((s * 2.08, s * 4.15))
-    cav = cutter(f'cut_cav{side}', clo, chi, BAY_DD[0], BAY_DD[1], FAIR_Z + 0.03, 2.30)
-    clo, chi = sorted((s * 4.10, s * 4.55))
-    cav2 = cutter(f'cut_cavO{side}', clo, chi, BAY_DD[0], BAY_DD[1], FAIR_Z + 0.03, 2.05)
+    # 0.9.4: the bay roof is the fairing's own flat top (cavity stops 2 cm under the top skin at z 2.10). The pod hangs
+    # below the wing with an open slit under the glove leading edge, so a bay opened up into the glove showed through it.
+    # The stowed gear tops out at z 2.092 (upper side brace).
+    # the bottom corners of the fairing are rounded (r 0.30), so below z 1.46 the cavity is narrower than above it:
+    # a full-width cavity broke through the rounded skin and left a slot along each lower corner
+    clo, chi = sorted((s * 2.08, s * 3.60))
+    cav = cutter(f'cut_cav{side}', clo, chi, BAY_DD[0], BAY_DD[1], 1.46, 2.08)
+    clo, chi = sorted((s * 3.55, s * 4.55))
+    cav2 = cutter(f'cut_cavO{side}', clo, chi, BAY_DD[0], BAY_DD[1], 1.46, 2.08)
+    clo, chi = sorted((s * 2.24, s * 4.47))
+    cav3 = cutter(f'cut_cavB{side}', clo, chi, BAY_DD[0], BAY_DD[1], FAIR_Z + 0.03, 1.47)
+    # inboard lower corner: a 45 deg chamfer (x + z >= 3.522, 1.4 cm or more inside the rounded skin) instead of a step,
+    # so the leg door clears it as the leg swings up
+    cav4 = prism_cutter(f'cut_cavC{side}', [(s * x, z) for x, z in ((2.08, 1.47), (2.08, 1.442), (2.212, 1.31), (2.25, 1.31), (2.25, 1.47))],
+                        BAY_DD[0], BAY_DD[1])
     opn = cutter(f'cut_open{side}', olo, ohi, BAY_DD[0], BAY_DD[1], 0.5, FAIR_Z + 0.05)
-    for c in (cav, cav2, opn): c.data.materials.append(MATS[MECH])
-    apply_cuts(gb, [cav, cav2, opn])
-    # recess in the glove underside over the inboard part of the bay (room for the leg door and brackets; stops short of the
-    # outer wing root that sits inside the glove further out)
-    rlo, rhi = sorted((s * 2.08, s * 4.15))
-    rec = cutter(f'cut_glove{side}', rlo, rhi, BAY_DD[0], BAY_DD[1], 1.80, 2.20); rec.data.materials.append(MATS[MECH])
+    for c in (cav, cav2, cav3, cav4, opn): c.data.materials.append(MATS[MECH])
+    apply_cuts(gb, [cav, cav2, cav3, cav4, opn])
+    # the glove underside dips to z 2.02 over the bay: remove it inside the fairing (never above the fairing top, so no
+    # hole opens where the glove rises clear of the fairing); the cut walls sit inside the fairing's solid walls
+    rlo, rhi = sorted((s * 2.05, s * 4.60))
+    rec = cutter(f'cut_glove{side}', rlo, rhi, BAY_DD[0] - 0.05, BAY_DD[1] + 0.05, 1.80, 2.09); rec.data.materials.append(MATS[MECH])
     apply_cuts(wr, [rec])
     # (no pivot fairing blister on the upper glove: the pivot stays inside the glove, per the owner)
     # outer pylon: a stub off the outboard flank of the gear fairing (the outer wing root swings inside the glove further
@@ -534,9 +559,9 @@ for side, s in (('R', 1), ('L', -1)):
              for z, d0, ln in ((1.88, 21.15, 2.25), (1.685, 21.25, 2.05))]
     loft(gp.mb, rings, True, True, SKIN)
     rbox(gp.mb, (s * GLOVE_PYLON_X, Y(22.25), 1.675), (0.10, 1.9, 0.04), 0.012, MECH)
-    # actuator and side-brace anchor brackets hanging from the glove into the bay
+    # actuator and side-brace anchor brackets hanging from the bay roof
     for ax, ad in ((2.72, ACT_D), (3.30, BRACE_D)):
-        rbox(gb.mb, (s * ax, Y(ad), 2.09), (0.16, 0.14, 0.20), 0.02, MECH)
+        rbox(gb.mb, (s * ax, Y(ad), 2.035), (0.16, 0.14, 0.09), 0.02, MECH)
     # trunnion bearings either side of the leg
     for bd in (20.66, 21.15):
         rbox(gb.mb, (s * GEAR_T[0], Y(bd), GEAR_T[2] + 0.10), (0.20, 0.06, 0.44), 0.015, MECH)
@@ -736,7 +761,9 @@ for side, s in (('R', 1), ('L', -1)):
     # leg door: a plate inboard of the leg on two brackets; stowed, it lies flush in the skin from OPEN_X[0] to 3.45
     LDX = GEAR_T[0] - (GEAR_T[2] - FAIR_Z)
     ld = part(f'legDoor_{side}', origin=T, parent=f'gear_{side}', col=False)
-    za, zb = GEAR_T[2] - (3.49 - GEAR_T[0]), GEAR_T[2] + (GEAR_T[0] - (OPEN_X[0] + 0.012))   # closed seams 8-12 mm
+    # closed seams 8-12 mm; the inboard edge is 3 cm short of the lip (the sill covers it) so with the gear down the
+    # door's top edge stays under the fairing top skin
+    za, zb = GEAR_T[2] - (3.49 - GEAR_T[0]), GEAR_T[2] + (GEAR_T[0] - (OPEN_X[0] + 0.012)) - 0.03
     rbox(ld.mb, (s * LDX, Y(20.9), (za + zb) / 2), (0.03, BAY_DD[1] - BAY_DD[0] - 0.02, zb - za), 0.008, SKIN)
     for bz in (GEAR_T[2] - 0.22, GEAR_T[2] - 0.50):
         for bd in (20.62, 21.18):
@@ -800,8 +827,10 @@ for side, s in (('R', 1), ('L', -1)):
     # seal strip inside the fairing over the door hinge line, so the hinge gap shows skin, not a dark slit
     rbox(gb_mb, (s * (DOOR_HX - 0.02), Y((BAY_DD[0] - 0.17 + BAY_DD[1] + 0.02) / 2), FAIR_Z + 0.07), (0.22, BAY_DD[1] - BAY_DD[0] + 0.19, 0.02), 0.004, SKIN)
     # fixed sill along the inboard edge of the opening: closes the slot between the stowed leg door and the bay lip
-    rbox(gb_mb, (s * 2.17, Y(20.9), FAIR_Z - 0.015), (0.22, BAY_DD[1] - BAY_DD[0] + 0.08, 0.03), 0.006, SKIN)
+    rbox(gb_mb, (s * 2.1715, Y(20.9), FAIR_Z - 0.015), (0.223, BAY_DD[1] - BAY_DD[0] + 0.08, 0.03), 0.006, SKIN)   # to x 2.283: 2 mm clear of the lowered door
     door_hinge(gb_mb, gd1.mb, H, BAY_DD[0] + 0.10, BAY_DD[1] - 0.10, Vector((s * 0.05, 0, 0.035)), n=4)
+    # seal strip just inboard of the hinge line: closes the sight line over the hinge rod into the bay with the doors shut
+    rbox(gb_mb, (s * 4.4575, Y(sum(BAY_DD) / 2), 1.33), (0.035, BAY_DD[1] - BAY_DD[0] - 0.02, 0.06), 0.006, MECH)
     door_hinge(gd1.mb, gd2.mb, E, BAY_DD[0] + 0.10, BAY_DD[1] - 0.10, Vector((s * 0.03, 0, 0.0)), n=4)
 
 # ================================================================ NOSE GEAR (retracts aft)
@@ -826,7 +855,7 @@ for ws, wx in (('L', -0.19), ('R', 0.19)):
 for side, s in (('R', 1), ('L', -1)):
     hl = Vector((s * 0.42, Y(11.35), BELLY_Z + 0.06))
     d = part(f'gearDoor_F{side}', origin=hl, parent=pair(f'gearDoorHinge_F{side}', hl, axis=(0, 1, 0), parent='fuselage_F'))
-    rbox(d.mb, (s * 0.21, Y(11.35), BELLY_Z + 0.05), (0.42, 2.38, 0.03), 0.01, SKIN)
+    rbox(d.mb, (s * 0.21, Y(11.365), BELLY_Z + 0.05), (0.42, 2.42, 0.03), 0.01, SKIN)   # covers the well to 5 mm at each end
     door_hinge(PARTS['fuselage_F'].mb, d.mb, hl, 10.25, 12.45, Vector((s * 0.03, 0, 0.03)), n=3)
 
 # ================================================================ bay doors: our own panels on the AB-4 door hinges and animation

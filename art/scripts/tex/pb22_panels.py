@@ -185,8 +185,10 @@ def features(M):
 
     # ---------------------------------------------------------- C4 cockpit: hatches, glazing seals, stencils
     # glazing: dark seal line round every pane, taken from the glass geometry
+    # 0.9.4: raised frame band round every pane in the livery colour (painted like the skin), so the glass edge reads as a joint;
+    # the seal groove sits at the outer edge of the band
     add([Surround('PB22_glass', None, ['canopy*', 'cockpit*', 'hatch*', 'window*'], ['cockpit', 'fuselage_FF', 'fuselage_F', 'hatch*'],
-                  width=0.022, depth=0.8, offset=0.010, dark=0.10)])
+                  width=0.016, depth=0.8, offset=0.050, dark=0.12, band=0.045, band_mul=1.0, band_sm=0.0, band_h=0.15)])
     # 0.4.7 porthole frames: seam where the frame bevel meets the skin, and a ring of 16 bolts on the flat frame face
     for sg_ in (1, -1):
         pc_, pa_ = (6.70, sg_ * 0.806, 3.251), (sg_, 0, 0.036)

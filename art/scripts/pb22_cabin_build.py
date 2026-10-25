@@ -134,6 +134,69 @@ for n, cells in win_cells.items():
         quad(gname, k, i, -0.004, GLASS)                     # set into the frame, just under the skin line: flush
         quad(gname, k, i, -0.004, GLASS, flip=True)
 
+# 0.9.4: inside frame round the glazing, so from the seats the line where the hull ends and the glass starts reads
+# as a frame, not as lining running out into open sky. A raised strip on the cabin lining along every edge of the window
+# opening: a lip down to the glass edge, a flat face and an outer wall back to the lining. Over a frame member (a post or
+# the arch, one cell wide) the strips from both panes meet at its middle, so the member reads as one solid frame.
+WF_W, WF_H = 0.045, 0.022           # strip width on the lining, height into the cabin
+def inner_frame(owner, cells):
+    S = set(cells)
+    mb = part(owner).mb
+    nodes = {}                       # (k, i) -> list of (u, W) of the edges that meet there
+    edges = []
+    for k, i in cells:
+        N_ = G.N
+        for (nk, ni), (a, b) in (((k, (i - 1) % N_), ((k + 1, i), (k, i))), ((k, (i + 1) % N_), ((k, i + 1), (k + 1, i + 1))),
+                                 ((k - 1, i), ((k, i), (k, i + 1))), ((k + 1, i), ((k + 1, i + 1), (k + 1, i)))):
+            if (nk, ni) in S or not (0 <= nk < len(G.d) - 1): continue
+            a = (a[0], a[1] % N_); b = (b[0], b[1] % N_)
+            A, B = G.pt(*a, -LINING), G.pt(*b, -LINING)
+            n = FRONT.normal(*G.centre(k, i)[:1], math.radians(G.centre(k, i)[1]))
+            t = (B - A).normalized(); u = t.cross(n).normalized()
+            cen = sum(G.quad(k, i, -LINING), Vector()) / 4
+            if u.dot((A + B) / 2 - cen) < 0: u = -u
+            # width: half the neighbouring cell when it is a frame member between panes, else the full strip
+            dn, an = G.centre(nk, ni)
+            W = WF_W
+            if WS_A[0] <= (an + 90.0) % 360.0 - 90.0 <= WS_A[1] and ws_frame(dn, (an + 90.0) % 360.0 - 90.0):
+                q = G.quad(nk, ni, -LINING); far = max(abs((v - A).dot(u)) for v in q)
+                W = min(WF_W, far / 2 - 0.001)
+            edges.append((a, b, u, W, n))
+            for v in (a, b): nodes.setdefault(v, []).append((u, W, n))
+    def off(v):
+        us = nodes[v]
+        # mitre: the point whose distance along each incident edge normal is that edge's width
+        if len(us) >= 2:
+            (u1, w1, _), (u2, w2, _) = us[0], us[1]
+            c = u1.dot(u2)
+            if c < 0.995:
+                det = 1 - c * c; al = (w1 - c * w2) / det; be = (w2 - c * w1) / det
+                p = u1 * al + u2 * be
+                if p.length > 3 * max(w1, w2): p = p.normalized() * 3 * max(w1, w2)
+                return p
+        u = sum((x[0] for x in us), Vector()).normalized(); return u * (sum(x[1] for x in us) / len(us))
+    V = {}
+    def vert(v, kind):
+        key = (v, kind)
+        if key not in V:
+            n = sum((x[2] for x in nodes[v]), Vector()).normalized()
+            base = G.pt(*v, -LINING)
+            p = {'L0': base, 'L1': base - n * WF_H, 'O1': base + off(v) - n * WF_H, 'O0': base + off(v)}[kind]
+            V[key] = mb.bm.verts.new(p)
+        return V[key]
+    nf = 0
+    for a, b, u, W, n in edges:
+        for vs, want in (([vert(a, 'L0'), vert(b, 'L0'), vert(b, 'L1'), vert(a, 'L1')], -u),     # lip: faces the opening
+                         ([vert(a, 'L1'), vert(b, 'L1'), vert(b, 'O1'), vert(a, 'O1')], -n),     # face: towards the crew
+                         ([vert(a, 'O1'), vert(b, 'O1'), vert(b, 'O0'), vert(a, 'O0')], u)):     # outer wall
+            nn = (vs[1].co - vs[0].co).cross(vs[3].co - vs[0].co)
+            if nn.dot(want) < 0: vs.reverse()
+            try: mb.face(vs, None, DARK, False); nf += 1      # dark frame paint (PB22_dark; the cabin texture pass only takes mech / int)
+            except ValueError: pass
+    print('inner glazing frame', owner, 'edges', len(edges), 'faces', nf)
+for n, cells in win_cells.items():
+    if cells: inner_frame(part_of(G.centre(*cells[0])[0]), cells)
+
 # windscreen frame: the support arch along the old front edge and two thin posts, on the outside of the glass
 def ws_bar(pts, w, h=0.025, taper=0):
     mb = part('cockpit').mb; rings = []; h0 = h
@@ -213,7 +276,7 @@ for side, s in (('L', -1), ('R', 1)):
         c = f.calc_center_median()
         if f.material_index >= len(MATS) or (abs(f.normal.x) < 0.3 and abs(math.hypot(c.y - Y(pd), c.z - pz) - pr) < 0.004): f.material_index = SKIN   # reveal walls only (a lining n-gon round the hole can have its centre near pr too); f.smooth = False; nwall += 1
     bpy.data.objects.remove(to); bpy.data.meshes.remove(tm); bpy.data.meshes.remove(res); bpy.data.objects.remove(co); bpy.data.meshes.remove(me)
-    # 0.4.7b: an undistorted spherical cap 6 cm high on a flat round mounting frame. The frame plane is square to
+    # 0.4.7b : an undistorted spherical cap 6 cm high on a flat round mounting frame. The frame plane is square to
     # the skin normal at the centre and stands just clear of the curved skin; a skirt closes it down to the skin, a sleeve
     # lines the hole beneath it. Frame bolts are painted in the livery (pb22_panels).
     tree = _BVH.FromBMesh(hb)                                  # the cut hatch
@@ -235,7 +298,9 @@ for side, s in (('L', -1), ('R', 1)):
     for k in range(NSEG):
         q = circ(C0, ro + PORT_BEVEL, k); hit = tree.ray_cast(q + ax_ * 0.1, -ax_, 0.6)[0]
         foot.append((hit if hit is not None else q - ax_ * (hmax + PORT_FRAME_H)) - ax_ * 0.002)
-    sleeve = [circ(C0 - ax_ * (hmax + PORT_FRAME_H + 0.05), rg, k) for k in range(NSEG)]
+    # 0.9.1 (gap at the top of the glass): the sleeve flares from the glass edge to just outside the cut hole, so it
+    # overlaps the hole edge at the lining and no sight line from the cabin slips past it to the frame's open underside
+    sleeve = [circ(C0 - ax_ * (hmax + PORT_FRAME_H + 0.05), pr + 0.006, k) for k in range(NSEG)]
     mb = hp.mb
     # rounded bevel: a mid ring between the frame edge and the foot, lifted so the profile is convex
     mid = []

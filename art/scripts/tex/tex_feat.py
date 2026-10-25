@@ -522,8 +522,9 @@ class Surround(Feature):
     `offset` (m) from the outline; rivets = (pitch, distance) adds a fastener ring at that distance."""
     kind = 'height'
     def __init__(self, src_fam, src_mat=None, src_parts='*', parts='*', width=0.024, depth=0.8, offset=0.008, dark=0.05,
-                 rivet_ring=None, where=None, smooth=-0.03, max_dist=0.12):
+                 rivet_ring=None, where=None, smooth=-0.03, max_dist=0.12, band=0.0, band_mul=1.0, band_sm=0.0, band_h=0.0):
         super().__init__(None, parts, where, None, 0.0)
+        self.band, self.band_mul, self.band_sm, self.band_h = band, band_mul, band_sm, band_h
         self.src = (src_fam, src_mat, [src_parts] if isinstance(src_parts, str) else list(src_parts))
         self.w, self.depth, self.off, self.dark, self.ring, self.smooth, self.maxd = width, depth, offset, dark, rivet_ring, smooth, max_dist
         self.tree = None
@@ -567,7 +568,13 @@ class Surround(Feature):
     def height(self, P, N):
         dd = self.dist(P)
         h = -self.depth * groove_prof((dd - self.off) / (self.w / 2))
+        if self.band_h:
+            h = h + self.band_h * self.band_mask(dd)
         return h
+
+    def band_mask(self, dd):
+        # flat frame / sealant band from the insert outline out to `band` (m), soft 4 mm edge
+        return 1 - smoothstep(self.band - 0.004, self.band + 0.004, dd)
 
     def paint(self, P, N, L, I):
         if self.tree is None: return
@@ -575,3 +582,7 @@ class Surround(Feature):
         g = groove_prof((dd - self.off) / (self.w / 2))
         L.col[I] *= (1 - self.dark * g)[:, None]
         L.sm[I] += self.smooth * g
+        if self.band:
+            a = self.band_mask(dd)
+            L.col[I] *= (1 - a * (1 - self.band_mul))[:, None]
+            L.sm[I] += self.band_sm * a

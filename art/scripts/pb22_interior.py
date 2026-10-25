@@ -67,20 +67,20 @@ for dd in (BAY_D0 + 0.03, BAY_D1 - 0.03):
 for side, s in (('R', 1), ('L', -1)):
     gm = PARTS[f'gearbay_{side}'].mb
     x0, x1 = 2.12, 4.50
-    zt = 2.26
+    # 0.9.4: the well roof is the fairing's flat top (bay cavity to z 2.08), so the roof
+    # detail hugs it; the stowed outboard wheels come up to z 2.055, the actuator to 2.077 at x 2.66
+    zt = 2.08
     for dd in frange(BAY_DD[0] + 0.25, BAY_DD[1] - 0.25, 0.55):           # roof ribs across the well
-        rbox(gm, (s * (x0 + x1) / 2, Y(dd), zt - 0.03), (x1 - x0 - 0.06, 0.04, 0.08), 0.006, MECH)
-    for xx in (2.6, 3.6):                                                 # two longitudinal roof beams
-        rbox(gm, (s * xx, Y((BAY_DD[0] + BAY_DD[1]) / 2), zt - 0.05), (0.08, BAY_DD[1] - BAY_DD[0] - 0.08, 0.10), 0.008, MECH)
-    # brake and hydraulic lines from the forward wall to the leg trunnion
+        rbox(gm, (s * (x0 + x1) / 2, Y(dd), zt - 0.01), (x1 - x0 - 0.06, 0.04, 0.02), 0.004, MECH)
+    for xx in (2.58,):                                                    # longitudinal roof beam (inboard; the stowed wheels sit outboard)
+        rbox(gm, (s * xx, Y((BAY_DD[0] + BAY_DD[1]) / 2), zt - 0.02), (0.06, BAY_DD[1] - BAY_DD[0] - 0.08, 0.04), 0.006, MECH)
+    # brake and hydraulic lines along the roof from the forward wall to the leg trunnion
     for k, dx in enumerate((0.0, 0.05, 0.10)):
-        pipe_run(gm, [(s * (3.9 + dx), Y(BAY_DD[0] + 0.05), zt - 0.12), (s * (3.9 + dx), Y(20.4), zt - 0.12),
+        pipe_run(gm, [(s * (3.43 + dx), Y(BAY_DD[0] + 0.05), zt - 0.025), (s * (3.43 + dx), Y(20.4), zt - 0.025),
                       (s * (GEAR_T[0] + 0.25 + dx), Y(20.7), GEAR_T[2] + 0.30)], 0.013 if k < 2 else 0.02)
-    # bogie uplock hook on the roof where the stowed bogie sits (outboard), and the door uplock near the hinge
-    rbox(gm, (s * 3.95, Y(21.0), zt - 0.14), (0.10, 0.18, 0.16), 0.01, MECH)
-    cyl(gm, (s * 3.95, Y(21.0), zt - 0.22), (s * 3.95, Y(21.0) - 0.08, zt - 0.28), 0.025, N=8, mat=DARK)
-    rbox(gm, (s * 4.40, Y(20.0), zt - 0.12), (0.08, 0.10, 0.12), 0.008, MECH)
-    rbox(gm, (s * 4.40, Y(22.0), zt - 0.12), (0.08, 0.10, 0.12), 0.008, MECH)
+    # door uplocks near the hinge
+    rbox(gm, (s * 4.45, Y(20.3), zt - 0.03), (0.06, 0.10, 0.06), 0.006, MECH)
+    rbox(gm, (s * 4.45, Y(22.0), zt - 0.03), (0.06, 0.10, 0.06), 0.006, MECH)
     # wall stiffeners on the fore and aft walls
     for dd in (BAY_DD[0] + 0.02, BAY_DD[1] - 0.02):
         for xx in (2.5, 3.1, 3.7, 4.2):

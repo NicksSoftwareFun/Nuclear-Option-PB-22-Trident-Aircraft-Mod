@@ -1154,7 +1154,7 @@ public static class PB22Builder
         so.FindProperty("landingSpeed").floatValue = 135f;  // 0.4.9 test at 170 touched down at 420 km/h and floated; keep 135
         so.FindProperty("shortLandingSpeed").floatValue = 80f;
         so.FindProperty("DefaultFuelLevel").floatValue = 0.5f;
-        so.FindProperty("rankRequired").intValue = 0;
+        so.FindProperty("rankRequired").intValue = 5;   // 2026-10-25: rank 5, same as the Darkreach
         so.FindProperty("groundTurningRadius").floatValue = 30f;
         // the AB-4 liveries are addressables this project cannot ship and are mapped to the AB-4 UVs anyway;
         // our own damage diagram and sweep gauge art (copies of the AB-4 UI prefabs, see UI/)
@@ -1194,7 +1194,7 @@ public static class PB22Builder
         var def = AssetDatabase.LoadMainAssetAtPath(MOD + "PB22Trident_def.asset");
         so = new SerializedObject(def);
         so.FindProperty("mass").floatValue = 56000f;
-        so.FindProperty("value").floatValue = 0f;
+        so.FindProperty("value").floatValue = 225f;   // 2026-10-25: same as the Darkreach (rank 5); AB-4 390 (rank 6)
         so.FindProperty("radarSize").floatValue = 0.08f;  // 2026-10-25: same as the Revoker (Brawler 0.6, Darkreach 0.01)
         so.FindProperty("spawnOffset").vector3Value = new Vector3(0f, 2.85f, 0f);
         so.FindProperty("restRotation").vector3Value = Vector3.zero;

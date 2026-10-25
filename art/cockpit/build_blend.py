@@ -134,8 +134,15 @@ def export(outdir):
     t = math.radians(M.COL_TILT)
     info = {'pivots': {k: list(v) for k, v in M.PIVOTS.items()},
             'wheel_axis': [0.0, -math.sin(t), math.cos(t)],     # wheel turns about this (forward, along the wheel normal)
-            'raise': M.RAISE, 'eye': list(M.EYE), 'tris': M.tri_count()}
+            'raise': M.RAISE, 'eye': list(M.EYE), 'tris': M.tri_count(),
+            # gauge needles: pivot at the hub, turned about 'axis' (into the panel; + = clockwise seen by the pilot), 0 deg along 'up'
+            'needles': {k: {'pivot': list(f.o), 'axis': [-f.n[0], -f.n[1], -f.n[2]], 'up': list(f.v)} for k, f in M.NEEDLES.items()}}
     json.dump(info, open(os.path.join(outdir, 'PB22_cockpit_layout.json'), 'w'), indent=1)
+    with open(os.path.join(outdir, 'PB22_cockpit_needles.txt'), 'w') as f:   # read by PB22Cockpit.Build: name, pivot, axis, up
+        for k, v in sorted(info['needles'].items()):
+            f.write(' '.join([k] + ['%.6f' % x for x in v['pivot'] + v['axis'] + v['up']]) + '\n')
+        for k, pv in sorted(M.MOVERS.items()):          # attitude balls and rudder pedals keep aircraft axes
+            f.write(' '.join([k] + ['%.6f' % x for x in list(pv) + [0, 0, 1, 0, 1, 0]]) + '\n')
     print('exported', list(obs))
 
 if __name__ == '__main__':
@@ -178,6 +185,19 @@ if __name__ == '__main__':
             cam(U2B((-0.25, 0.72, 10.6)), U2B((0.0, 0.12, 12.6)), fov=60) if not os.environ.get('DECKCAM') else cam(U2B((0.45, 0.55, 11.0)), U2B((0.55, 0.22, 11.6)), fov=55)
         else:
             cam(U2B((1.9, 1.0, 13.9)), U2B((0.0, 0.25, 11.8)), fov=40)
+        render(sys.argv[2])
+    elif mode == 'render_side':          # outside view through the side glass, like the in-game check (2026-10-25)
+        if os.environ.get('NOGLASS'):
+            for o in ctx:
+                if 'glass' in o.name: o.hide_render = True
+        cam(*( (U2B((3.4, 0.30, 11.4)), U2B((0.0, 0.0, 11.6))) if not os.environ.get('SIDECAM2') else (U2B((2.4, 1.3, 12.6)), U2B((0.0, 0.0, 12.0))) ), fov=45)
+        render(sys.argv[2])
+    elif mode == 'render_pedals':        # close look at the pedal channels from above the seat, seats and pilots hidden
+        for o in ctx:
+            if 'glass' in o.name or o.name.startswith('pilot'): o.hide_render = True
+        for o in bpy.data.objects:
+            if o.name.startswith('seats'): o.hide_render = True
+        cam(U2B((-0.62, -0.22, 10.80)), U2B((-0.30, -0.62, 11.33)), fov=48); bpy.context.scene.view_settings.exposure = 1.6
         render(sys.argv[2])
     elif mode == 'render_legs':
         for o in ctx:

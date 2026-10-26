@@ -21,8 +21,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Package source and missions
+        # GitHub lists release assets by name, and NOMNOM falls back to the first one, so the source zip is named to sort after PB22Trident.dll
         run: |
-          zip -r "PB22Trident-${TAG}-src.zip" src unity art
+          zip -r "Source-PB22Trident-${TAG}.zip" src unity art
           (cd missions && zip -r ../PB22-To-Sink-a-Carrier.zip "PB-22 - To Sink a Carrier")
       - name: Create release
         env:
@@ -39,12 +40,12 @@ jobs:
             # release already out: refresh its files in place (the 0.x releases also carry the mission zip)
             case "$TAG" in
               v0*) gh release upload "$TAG" PB22-To-Sink-a-Carrier.zip --clobber ;;
-              *) gh release upload "$TAG" release/PB22Trident.dll "PB22Trident-${TAG}-src.zip" --clobber ;;
+              *) gh release upload "$TAG" release/PB22Trident.dll "Source-PB22Trident-${TAG}.zip" --clobber ;;
             esac
           else
             # from 1.0.0 the mission is inside the DLL, so only the 0.x releases carried it as a separate zip
             MISSION=""
             case "$TAG" in v0*) MISSION="PB22-To-Sink-a-Carrier.zip" ;; esac
-            gh release create "$TAG" release/PB22Trident.dll "PB22Trident-${TAG}-src.zip" $MISSION \
+            gh release create "$TAG" release/PB22Trident.dll "Source-PB22Trident-${TAG}.zip" $MISSION \
               --target "$GITHUB_SHA" --title "PB-22 Trident ${TAG}" --notes-file notes.txt $PRE
           fi

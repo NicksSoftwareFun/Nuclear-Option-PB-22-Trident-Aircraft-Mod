@@ -11,6 +11,7 @@
   "githubOwner": "NicksSoftwareFun",
   "githubRepoName": "nuclear-option-pb-22-trident-aircraft-mod",
   "autoUpdateArtifacts": "True",
+  "releaseAssetName": "PB22Trident.dll",
   "artifacts": [
     {
       "fileName": "PB22Trident.dll",

@@ -4109,10 +4109,10 @@
       "Type": "DestroyUnits",
       "UniqueName": "ArgusDeadSpawnAB22Bomber",
       "Faction": "Primeva",
-      "DisplayName": "ArgusDeadSpawnAB22Bomber",
-      "Hidden": false,
+      "DisplayName": "ArgusDeadSpawnBB22Bomber",
+      "Hidden": true,
       "Outcomes": [
-        "AB22 Reinforcements",
+        "PB22 Reinforcements",
         "ShowMessage"
       ],
       "completeOrder": "CompleteAny",
@@ -4248,7 +4248,7 @@
     },
     {
       "Type": "SpawnUnit",
-      "UniqueName": "AB22 Reinforcements",
+      "UniqueName": "PB22 Reinforcements",
       "UnitsToSpawn": [
         "PB22Trident",
         "PB22Trident_3"

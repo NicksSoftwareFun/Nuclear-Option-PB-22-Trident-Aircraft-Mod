@@ -204,5 +204,6 @@ def extras(name, ST, FUSE_FWD, FUSE):
         F.append(ST.place_side(boxed(ST, ['FIRE ACCESS'], R, px=72, pad=18, lw=8), 27.6, 2.30, s, 0.40, FUSE, xr=(0.5, 2.3), op=0.9))
         F.append(ST.place_top(ST.text_img('FUEL', S, px=72), 22.95, s * 6.1, 2.30, 0.90, ['wing1_*', 'slat_*'], op=0.85, tol=0.3))
     F.append(ST.place_side(boxed(ST, ['O2'], S, px=72, pad=18, lw=8), 7.82, 2.40, -1, 0.30, FUSE_FWD, xr=(0.3, 1.2), op=0.85))
-    F.append(ST.place_side(ST.text_img('EXT PWR', S, px=72), 13.0, 1.72, -1, 0.26, ['intake_L', 'fuselage'], xr=(1.0, 2.3), op=0.85))
+    # outer intake skin only (x -2.06); the inboard duct wall and the fuselage inside the duct also face outboard (0.9.1 fix)
+    F.append(ST.place_side(ST.text_img('EXT PWR', S, px=72), 13.0, 1.72, -1, 0.26, ['intake_L'], xr=(1.9, 2.3), op=0.85))
     return F

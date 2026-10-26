@@ -8,6 +8,8 @@ The PB-22 Trident is built on the stock Alkyon AB-4 setup. Its exterior model, c
 
 The bundle also carries a few copies of stock game assets as named PB-22 parts: the internal structure textures (seen through battle damage) and the Medusa ejection seats. They remain the property of Shockfront Studios. This repository does not contain them.
 
+The BDF and PALA logos on the liveries are fan redraws of the game's faction insignia. The factions and their insignia belong to Shockfront Studios.
+
 ## Third-party software
 
 | Project | Author | Licence | Use |

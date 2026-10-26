@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.0.0
+- Six liveries: BDF and PALA versions of Matte Grey, Maritime Blue and Low-Level Camo. Camo and grey carry full-colour faction roundels on the fin and wings; Maritime Blue gets low-vis ones.
+- The "To Sink a Carrier" mission now comes with the mod and is listed with the built-in missions. No separate download.
+- Rear crew no longer spin round on the ejection rail.
+- Fixed flickering surfaces in and behind the cockpit when seen from outside.
+- Inner spoilers stay drawn closed with the wings swept back.
+- Tailplane: a fixed root section on the hull, and the moving part is drawn at 60% of its real travel so it no longer looks like it's flapping. Handling is unchanged.
+- Rudder travel 15 to 11 degrees. It could yaw itself round too hard.
+- Fuel 53,550 to 36,000 kg, closer to the other heavies on endurance.
+- Softer yaw assist on the ground (3 to 2, the same as the CAS and COIN) to stop the shaking while taxiing. Full rudder still turns as tight as before.
+- The landing log setting is now off by default.
+
 ## 0.9.4
 - Rank 5 and cost 225, the same as the Darkreach.
 - Main gear pods keep their flat tops under the wing, so the gap no longer shows into the gear bay.

@@ -677,11 +677,19 @@ for side, s in (('R', 1), ('L', -1)):
     hinge(f'elevator_{side}', hp, parent='fuselage_R', size=0.3)
     el = part(f'elevator_{side}_visible', origin=hp, parent=pair(f'elevatorHinge_{side}', hp, axis=(1, 0, 0), parent=f'elevator_{side}'))
     st = [(1.1, 27.0, 5.5, 0.045), (1.6, 27.4, 5.1, 0.045), (3.3, 29.45, 3.75, 0.042), (4.9, 31.5, 2.4, 0.04), (5.15, 32.1, 1.75, 0.035), (5.2, 32.35, 1.35, 0.02)]
-    rings = []
-    for x, le, ch, t in st:
+    def at(x):      # planform station at span x, on the straight line between its neighbours
+        for a, b in zip(st, st[1:]):
+            if a[0] <= x <= b[0]:
+                k = (x - a[0]) / (b[0] - a[0]); return tuple(a[i] + (b[i] - a[i]) * k for i in range(4))
+    def ring(x, le, ch, t):
         c = Vector((0, -ch, 0))
-        rings.append([Vector((s * x, Y(le), 2.12)) + c * u + Vector((0, 0, 1)) * (v * ch) for u, v in section(t, 0, 1, 22)])
-    loft(el.mb, rings, True, True, SKIN)
+        return [Vector((s * x, Y(le), 2.12)) + c * u + Vector((0, 0, 1)) * (v * ch) for u, v in section(t, 0, 1, 22)]
+    # 0.9.5: the root of the all-moving surface swung through the engine nacelle. The root now stays on the hull as a
+    # fixed stub out to ELEV_SPLIT (0.3 m clear of the nacelle side, which is widest at x 1.70); the moving surface starts there.
+    ELEV_SPLIT, ELEV_GAP = 2.0, 0.012
+    root_st = [r for r in st if r[0] < ELEV_SPLIT] + [at(ELEV_SPLIT - ELEV_GAP)]
+    loft(part('fuselage_R').mb, [ring(*r) for r in root_st], True, True, SKIN)
+    loft(el.mb, [ring(*r) for r in [at(ELEV_SPLIT + ELEV_GAP)] + [r for r in st if r[0] > ELEV_SPLIT]], True, True, SKIN)
     for xd, ted in ((4.85, 33.80), (5.10, 33.84)):
         cyl(el.mb, (s * xd, Y(ted - 0.02), 2.12), (s * xd, Y(ted + 0.12), 2.12), 0.012, 0.007, N=6, mat=MECH)
 

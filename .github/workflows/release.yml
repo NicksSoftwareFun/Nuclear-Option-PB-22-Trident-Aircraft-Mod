@@ -28,13 +28,20 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          awk 'NR>3 && /^## /{exit} NR>3' CHANGELOG.txt > notes.txt
+          if [ -f "release/notes-${TAG}.md" ]; then
+            cp "release/notes-${TAG}.md" notes.txt
+          else
+            awk 'NR>3 && /^## /{exit} NR>3' CHANGELOG.txt > notes.txt
+          fi
           PRE=""
           case "$TAG" in v0*) PRE="--prerelease" ;; esac
           if gh release view "$TAG" > /dev/null 2>&1; then
             # release already out: only add or refresh the mission, leave the DLL and source as published
             gh release upload "$TAG" PB22-To-Sink-a-Carrier.zip --clobber
           else
-            gh release create "$TAG" release/PB22Trident.dll "PB22Trident-${TAG}-src.zip" PB22-To-Sink-a-Carrier.zip \
+            # from 1.0.0 the mission is inside the DLL, so only the 0.x releases carried it as a separate zip
+            MISSION=""
+            case "$TAG" in v0*) MISSION="PB22-To-Sink-a-Carrier.zip" ;; esac
+            gh release create "$TAG" release/PB22Trident.dll "PB22Trident-${TAG}-src.zip" $MISSION \
               --target "$GITHUB_SHA" --title "PB-22 Trident ${TAG}" --notes-file notes.txt $PRE
           fi

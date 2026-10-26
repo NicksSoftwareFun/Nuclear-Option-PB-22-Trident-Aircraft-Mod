@@ -336,11 +336,11 @@ for side, s in (('R', 1), ('L', -1)):
     for c in (0.12, 0.45, 0.75):
         def esp(m, c=c, inset=0.008, w=0.010):
             e = Vector((0, w, 0)); rings = []
-            for x in (1.75, 2.5, 3.3, 4.1, 4.85):
+            for x in (2.05, 2.5, 3.3, 4.1, 4.85):      # 0.9.5: from the fixed root stub's joint (x 2.0) outward
                 a, b = ept(s, x, c, 1, inset), ept(s, x, c, -1, inset); rings.append([a + e, a - e, b - e, b + e])
             n0 = _fv(m); loft(m, rings, True, True, MECH, smooth=False); _closed(m, n0)
         splace(esp, f'tailplane spar {side} c{c}', ev, shrink=lambda k, c=c: (lambda m: esp(m, c, 0.010 + 0.002 * k, 0.008)))
-    for x in (1.8, 2.4, 3.0, 3.6, 4.2, 4.8):
+    for x in (2.05, 2.4, 3.0, 3.6, 4.2, 4.8):
         def erib(m, x=x, c0=0.06, c1=0.92, inset=0.008, th=0.010):
             cs = [c0 + (c1 - c0) * j / 10 for j in range(11)]
             out = [ept(s, x, c, 1, inset) for c in cs] + [ept(s, x, c, -1, inset) for c in reversed(cs)]

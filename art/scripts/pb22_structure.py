@@ -104,6 +104,9 @@ def longeron(name, d0, d1, th, size=0.06, off=0.045, mask=None, step=0.45):
     mb = PARTS[name].mb
     n = max(int(math.ceil((d1 - d0) / step)), 1)
     pts = [BODY.point(d0 + (d1 - d0) * k / n, th, -off) for k in range(n + 1)]
+    # over the nacelles the outer skin is the flat intake box top (z 3.64), inside the round body line: keep the
+    # longeron under it, or it pokes through the skin along the shoulders
+    pts = [Vector((p.x, p.y, min(p.z, 3.64 - 0.06 - size * 0.7))) if 14.6 <= Y(0) - p.y <= 26.3 else p for p in pts]
     run = []
     for p in pts + [None]:
         if p is not None and not (mask and mask(p)): run.append(p); continue

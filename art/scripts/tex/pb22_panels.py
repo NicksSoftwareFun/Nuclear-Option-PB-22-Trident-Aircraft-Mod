@@ -14,6 +14,7 @@ from tex_feat import (F, Line, Box, Disc, Custom, Union, Inter, Minus, Groove, F
 import os
 import pb22_stencils as ST
 import pb22_livery as LV
+import pb22_faction as FA
 
 LIVERY = os.environ.get('PB22_LIVERY', 'grey')      # grey (default skin) | maritime | lowlevel
 
@@ -496,6 +497,8 @@ def features(M):
     # insignia and hand-stencilled maintenance markings of the painted liveries
     if LIVERY != 'grey':
         add(LV.extras(LIVERY, ST, FUSE_FWD, FUSE))
+    # faction insignia (PB22_FACTION = bdf | pala): one texture per faction livery, as the stock aircraft do
+    add(FA.marks(LIVERY, ST))
     return S
 
 

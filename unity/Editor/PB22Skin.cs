@@ -1,6 +1,7 @@
 // PB-22 Trident: wire the painted skin textures into PB22_skin.mat and the grey livery.
 // Menu: PB22/Apply Skin Textures. Expects Art/Skin/PB22_skin_{b,n,m,ao,dmg_b,dmg_n}.png and
-// Art/Skin/PB22_livery_{maritime,lowlevel}_b.png inside the mod folder; creates the two extra LiveryData assets.
+// Art/Skin/PB22_livery_{maritime,lowlevel}_b.png and PB22_livery_{grey,maritime,lowlevel}_{bdf,pala}_b.png inside the
+// mod folder; creates the extra LiveryData assets.
 using UnityEditor;
 using UnityEngine;
 
@@ -62,6 +63,10 @@ public static class PB22Skin
         // the two painted liveries are copies of the grey LiveryData with their own base-colour texture
         Livery("PB22_livery_maritime", Tex("PB22_livery_maritime_b", true, false, false));
         Livery("PB22_livery_lowlevel", Tex("PB22_livery_lowlevel_b", true, false, false));
+        // faction versions (2026-10-25): each livery once with the BDF and once with the PALA insignia painted in
+        foreach (var l in new[] { "grey", "maritime", "lowlevel" })
+            foreach (var f in new[] { "bdf", "pala" })
+                Livery("PB22_livery_" + l + "_" + f, Tex("PB22_livery_" + l + "_" + f + "_b", true, false, false));
         AssetDatabase.SaveAssets();
         Debug.Log("PB22 skin applied: " + AssetDatabase.GetAssetPath(b));
     }

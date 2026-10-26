@@ -21,7 +21,9 @@ The mod is a single file. It needs nothing else from this repository.
 
 ## Mission: To Sink a Carrier
 
-An optional mission made for the PB-22. Download `PB22-To-Sink-a-Carrier.zip` from the same release and unzip it into `%USERPROFILE%\AppData\LocalLow\Shockfront\NuclearOption\Missions`, so you end up with a `PB-22 - To Sink a Carrier` folder there. It shows up in the mission list. The mission files are also in `missions/` in this repository.
+A mission made for the PB-22 comes with the mod. It is listed with the game's built-in missions, so there is nothing extra to install. The mission files are also in `missions/` in this repository.
+
+If you installed the mission by hand for 0.9.4, delete the `PB-22 - To Sink a Carrier` folder from `%USERPROFILE%\AppData\LocalLow\Shockfront\NuclearOption\Missions`, or it shows up twice.
 
 ## The aircraft
 
@@ -30,7 +32,7 @@ An optional mission made for the PB-22. Download `PB22-To-Sink-a-Carrier.zip` fr
 - Built-in jammer.
 - Four crew stations with ejection seats. The crew hatches double as entry doors.
 - Live cockpit gauges and a working standby horizon.
-- Three liveries: grey, Maritime Blue and Low-Level Camo.
+- Six liveries: Matte Grey, Maritime Blue and Low-Level Camo, each in a BDF and a PALA version.
 - Fits through the medium hangar door.
 
 ## What the plugin does
@@ -39,10 +41,12 @@ An optional mission made for the PB-22. Download `PB22-To-Sink-a-Carrier.zip` fr
 
 - **Takeoff:** the stock AI pushes the nose down hard late in the PB-22's long ground roll. The plugin keeps the elevator neutral on the ground until the AI rotates.
 - **Landing:** the PB-22's main wheels sit well behind its centre, so the AI misreads its height on touchdown and aborts. While the AI lands, the plugin gives it the main wheel height instead.
+- **Ejection:** the stock ejection rail turns every seat to face forward. The plugin keeps the two rear crew seats facing aft while they leave the aircraft.
+- **Spoilers:** the inner spoilers are drawn closed once the wings sweep back. Their drag works as before.
 - **Engine fans:** the intake fans spin with engine RPM.
 - **Gauges:** the cockpit needles and warning lamps read the game's flight, engine, fuel, power and damage state. Read only.
 
-Optional settings are in `BepInEx\config\nick.nuclearoption.pb22trident.cfg`. `Testing/DebugLog` writes fan diagnostics to the BepInEx log (off by default). `Testing/LandingLog` writes one line each time an AI PB-22 changes landing phase.
+Optional settings are in `BepInEx\config\nick.nuclearoption.pb22trident.cfg`. `Testing/DebugLog` writes fan diagnostics to the BepInEx log (off by default). `Testing/LandingLog` writes one line each time an AI PB-22 changes landing phase (off by default).
 
 ## Building from source
 

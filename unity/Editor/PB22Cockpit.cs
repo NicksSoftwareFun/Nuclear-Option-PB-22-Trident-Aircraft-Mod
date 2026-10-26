@@ -496,6 +496,9 @@ public static class PB22Cockpit
         var so = new SerializedObject(ac); var p = Prop(so, "cockpitRenderers");
         var have = Enumerable.Range(0, p.arraySize).Select(i => p.GetArrayElementAtIndex(i).objectReferenceValue).Where(o => o != null).ToList();
         ObjArray(ac, "cockpitRenderers", have.Concat(added).ToArray());
+        // like stock, the detailed interior starts hidden: the game only switches it on in the cockpit view (and the simple
+        // interior off). Left on, every PB-22 seen from outside drew both interiors on top of each other and they z-fought.
+        foreach (var o in have.Concat(added)) if (o is Renderer rr) rr.enabled = false;
     }
 
     static Renderer HatchInterior(Transform root, Transform hatch, int layer, Material ck, StringBuilder log)

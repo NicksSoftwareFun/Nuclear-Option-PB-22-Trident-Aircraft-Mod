@@ -13,7 +13,7 @@ namespace PB22Trident
 {
     // Carries the PB-22 Trident bundle (embedded .nobp, loaded by Blueprinter) and spins the engine fans. Test builds
     // (-p:DefineConstants=FLIGHTLOG) also write a flight log of the player's aircraft for performance tuning.
-    [BepInPlugin("nick.nuclearoption.pb22trident", "PB-22 Trident", "0.9.4")]
+    [BepInPlugin("nick.nuclearoption.pb22trident", "PB-22 Trident", "1.0.0")]
     [BepInDependency("com.nikkorap.blueprinter", BepInDependency.DependencyFlags.SoftDependency)]
     public class Plugin : BaseUnityPlugin
     {
@@ -28,7 +28,7 @@ namespace PB22Trident
         {
             Log = Logger;
             DebugLog = Config.Bind("Testing", "DebugLog", false, "Write PB-22 fan diagnostics to the BepInEx log.");
-            LandingLog = Config.Bind("Testing", "LandingLog", true, "Write one line to the BepInEx log each time an AI PB-22 changes landing phase.");
+            LandingLog = Config.Bind("Testing", "LandingLog", false, "Write one line to the BepInEx log each time an AI PB-22 changes landing phase.");
 #if FLIGHTLOG
             FlightLog = Config.Bind("Testing", "FlightLog", false,
                 "Write a CSV flight log of the aircraft you fly (any type) to BepInEx/PB22_flightlogs. For performance tuning.");
@@ -41,7 +41,79 @@ namespace PB22Trident
             go.AddComponent<PB22Gauges>();
             TakeoffFix.Apply(Logger);
             LandingFix.Apply(Logger);
+            SeatFix.Apply(Logger);
             Logger.LogInfo("PB-22 Trident loaded");
+        }
+    }
+
+    // The stock ejection rail holds a seat at its cockpit part's rotation, which assumes every seat faces forward. The
+    // PB-22's rear crew face aft, so they spun round on the rail. Keep each seat's own facing while it rides the rail
+    // and hand it to the free flight phase still facing that way.
+    internal static class SeatFix
+    {
+        private const float Rail = 1.5f;  // EjectionSeat.RAIL_TIME
+        private static readonly Dictionary<Component, Quaternion> turned = new Dictionary<Component, Quaternion>();
+
+        public static void Apply(BepInEx.Logging.ManualLogSource log)
+        {
+            try
+            {
+                var t = R.T("EjectionSeat");
+                var fire = t == null ? null : t.GetMethod("Fire", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                var late = t == null ? null : t.GetMethod("LateUpdate", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                if (fire == null || late == null) { log.LogWarning("PB-22 seat fix: ejection seat not found"); return; }
+                var h = new Harmony("nick.nuclearoption.pb22trident.seats");
+                h.Patch(fire, postfix: new HarmonyMethod(typeof(SeatFix), nameof(PostFire)));
+                h.Patch(late, postfix: new HarmonyMethod(typeof(SeatFix), nameof(PostLate)));
+            }
+            catch (Exception e) { log.LogWarning("PB-22 seat fix not applied: " + e.Message); }
+        }
+
+        private static void PostFire(Component __instance, Component __0)
+        {
+            try
+            {
+                var ac = R.Get(__0, "parentUnit") as Component;
+                var rb = R.Get(__instance, "pilotRB") as Component;
+                if (ac == null || rb == null || !ac.name.StartsWith("PB22Trident")) return;
+                var offset = Quaternion.Inverse(__0.transform.rotation) * rb.transform.rotation;
+                if (Vector3.Angle(offset * Vector3.forward, Vector3.forward) > 90f) turned[__instance] = offset;
+            }
+            catch { }
+        }
+
+        private static PropertyInfo rbRotation;  // Rigidbody.rotation (the plugin has no physics module reference)
+
+        private static void SetRot(Component rb, Quaternion q)
+        {
+            if (rbRotation == null) rbRotation = rb.GetType().GetProperty("rotation");
+            rbRotation.SetValue(rb, q, null);
+        }
+
+        private static void PostLate(Component __instance)
+        {
+            Quaternion offset;
+            if (turned.Count == 0 || !turned.TryGetValue(__instance, out offset)) return;
+            try
+            {
+                var part = R.Get(__instance, "cockpitPart") as Component;
+                var rb = R.Get(__instance, "pilotRB") as Component;
+                if (part == null || rb == null) { turned.Remove(__instance); return; }
+                if (R.Fl(__instance, "railPosition") < Rail)
+                {
+                    var q = part.transform.rotation * offset;
+                    rb.transform.rotation = q;
+                    SetRot(rb, q);
+                }
+                else
+                {   // off the rail: the last rail step left the body at the part's rotation
+                    var q = (Quaternion)R.Get(rb, "rotation") * offset;
+                    SetRot(rb, q);
+                    rb.transform.rotation = q;
+                    turned.Remove(__instance);
+                }
+            }
+            catch { turned.Remove(__instance); }
         }
     }
 
@@ -319,8 +391,11 @@ namespace PB22Trident
     public class PB22Runtime : MonoBehaviour
     {
         private class Fan { public Transform t; public Component engine; }
+        private class Spoiler { public Component swing; public int side; public Transform upper, lower; public Quaternion written; }
 
         private readonly List<Fan> fans = new List<Fan>();
+        private readonly List<Spoiler> spoilers = new List<Spoiler>();
+        private Type swingType;
         private float nextScan;
         private Type aircraftType, turbofanType;
 
@@ -335,7 +410,7 @@ namespace PB22Trident
 
         private void Update()
         {
-            if (aircraftType == null) { aircraftType = R.T("Aircraft"); turbofanType = R.T("Turbofan"); }
+            if (aircraftType == null) { aircraftType = R.T("Aircraft"); turbofanType = R.T("Turbofan"); swingType = R.T("SwingWingController"); }
             if (aircraftType == null) return;
             if (Time.unscaledTime >= nextScan) { nextScan = Time.unscaledTime + 2f; Scan(); }
             SpinFans();
@@ -351,11 +426,19 @@ namespace PB22Trident
         private void Scan()
         {
             fans.RemoveAll(f => f.t == null || f.engine == null);
+            spoilers.RemoveAll(sp => sp.swing == null || sp.upper == null || sp.lower == null);
             var all = FindObjectsOfType(aircraftType);
             foreach (var o in all)
             {
                 var ac = (Component)o;
                 if (!ac.name.StartsWith("PB22")) continue;
+                var swing = swingType != null ? ac.GetComponentInChildren(swingType, true) : null;
+                for (int i = 0; swing != null && i < 2; i++)
+                {   // rotators 0 and 1 are the left and right wing
+                    var up = R.Find(ac, "spoilerSplit_" + (i == 0 ? "L" : "R"));
+                    var lo = R.Find(ac, "spoilerSplitLower_" + (i == 0 ? "L" : "R"));
+                    if (up != null && lo != null && !spoilers.Exists(sp => sp.upper == up)) spoilers.Add(new Spoiler { swing = swing, side = i, upper = up, lower = lo });
+                }
                 foreach (var side in new[] { "L", "R" })
                 {
                     var t = R.Find(ac, "fan_" + side);
@@ -379,6 +462,31 @@ namespace PB22Trident
                 if (player != logged) OpenLog(player);
             }
 #endif
+        }
+
+        // The spoiler panels slide under the fixed glove as the wings sweep, so a raised speed brake poked up through it. Swept
+        // back, the panels are drawn closed. Only the drawn panel moves: the speed brake's drag comes from the game's own split
+        // value, which is left alone, and the game sets the panel again from that value every physics step.
+        private const float StowStart = 0.25f, StowEnd = 0.5f;   // swing amount (0 = spread, 1 = 45 deg): fully closed from 22.5 deg
+        private void LateUpdate()
+        {
+            foreach (var sp in spoilers)
+            {
+                if (sp.swing == null || sp.upper == null || sp.lower == null) continue;
+                var rot = R.Get(sp.swing, "rotators") as Array;
+                if (rot == null || sp.side >= rot.Length) continue;
+                var r = rot.GetValue(sp.side);
+                var m = r.GetType().GetMethod("GetSwingAmount");
+                float swing = m != null ? (float)m.Invoke(r, null) : 0f;
+                float open = 1f - Mathf.InverseLerp(StowStart, StowEnd, swing);
+                if (open >= 1f) continue;
+                if (sp.upper.localRotation == sp.written) continue;   // no physics step since the last frame: already drawn
+                // the game turns the two halves of the split equally either way from rest, so rest lies halfway between them
+                var rest = Quaternion.Slerp(sp.lower.localRotation, sp.upper.localRotation, 0.5f);
+                sp.upper.localRotation = Quaternion.Slerp(rest, sp.upper.localRotation, open);
+                sp.lower.localRotation = Quaternion.Slerp(rest, sp.lower.localRotation, open);
+                sp.written = sp.upper.localRotation;
+            }
         }
 
         // the fan face turns with the engine's spool: a visual rate (not the real 4000 rpm, which would strobe) scaled by RPM

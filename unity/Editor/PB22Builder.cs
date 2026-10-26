@@ -651,6 +651,19 @@ public static class PB22Builder
             var e2 = e1.GetChild(0); e2.localPosition = Vector3.zero; e2.localRotation = Quaternion.identity;
             var ev = e2.GetChild(0); Part(ev, "elevator_" + s + "_visible"); SetLoD(ev, "elevator_" + s + "_visible_colmesh");
             SetCol(el, "elevator_" + s + "_visible_colmesh");
+            // 0.9.5: the tailplane is drawn at 60% of its real deflection. The game still turns hinge 2 through the full
+            // range and the lift normal rides on it, so the flight model is unchanged; the drawn surface hangs off hinge 1 beside
+            // it and follows it at 60% through a stock Unity RotationConstraint.
+            ev.Find("elevator_" + s + "_liftNormal").SetParent(e2, true);
+            ev.SetParent(e1, true);
+            var rc = ev.gameObject.GetComponent<UnityEngine.Animations.RotationConstraint>();
+            if (rc == null) rc = ev.gameObject.AddComponent<UnityEngine.Animations.RotationConstraint>();
+            while (rc.sourceCount > 0) rc.RemoveSource(0);
+            rc.AddSource(new UnityEngine.Animations.ConstraintSource { sourceTransform = e2, weight = 1f });
+            rc.rotationAtRest = ev.localEulerAngles;
+            rc.rotationOffset = (Quaternion.Inverse(e2.rotation) * ev.rotation).eulerAngles;
+            rc.rotationAxis = UnityEngine.Animations.Axis.X | UnityEngine.Animations.Axis.Y | UnityEngine.Animations.Axis.Z;
+            rc.weight = 0.6f; rc.locked = true; rc.constraintActive = true;
             var cs = C(el, "ControlSurface");
             Set(cs, "pitchRange", -20f); Set(cs, "rollRange", 8f * sg); Set(cs, "yawRange", 0f);
             var ap = C(el, "AeroPart");
@@ -664,7 +677,7 @@ public static class PB22Builder
         var rv = r2.GetChild(0); Part(rv, "rudder_L_visible"); SetLoD(rv, "rudder_L_visible_colmesh");
         var rln = rv.Find("rudder_L_liftNormal"); rln.localPosition = Vector3.zero; rln.rotation = Quaternion.Euler(0f, 0f, 270f);
         var rcs = C(rud, "ControlSurface");
-        Set(rcs, "yawRange", -15f);
+        Set(rcs, "yawRange", -11f);     // 0.9.5: was 15, yawed itself round too hard; about a quarter less side force
         var rap = C(rud, "AeroPart");
         Joints(rap, C(tail, "AeroPart"), 300000f, C(fR, "AeroPart"), 300000f, C(root, "AeroPart"), 200000f);
         Doom(Need(root, "rudderFoldHinge_La"));
@@ -1085,22 +1098,23 @@ public static class PB22Builder
         // lifting area 2x the 0.3.0 values: at full fuel the wing loading was far above the AB-4's and the jet could not
         // reach lift-off before the engines scrape the runway (6.4 deg pitch). The sweep area change is doubled to match.
         // dragArea about 0.4x the first pass (real-world figures): summed 8.4 against the AB-4's 5.0 for 1.6x its thrust
-        Part("", 9000f, 40f, 0.6f, 23000f);
-        Part("fuselage_F", 4000f, 12f, 0.5f, 10000f);
+        // fuel 36,000 kg total (0.9.5; was 53,550): every tank cut by the same share, so the fuel CG is unchanged
+        Part("", 9000f, 40f, 0.6f, 15460f);
+        Part("fuselage_F", 4000f, 12f, 0.5f, 6720f);
         Part("fuselage_FF", 2500f, 0f, 0.06f, -1f);
         Part("cockpit", 2500f, 0f, 0.5f, -1f);
         Part("nose", 1300f, 0f, 0.08f, -1f);
-        Part("fuselage_R", 3000f, 0f, 0.5f, 1000f);
+        Part("fuselage_R", 3000f, 0f, 0.5f, 670f);
         Part("tail", 1500f, 0f, 0.3f, -1f);
         Part("rudder_L", 900f, 12f, 0f, -1f);
         foreach (var s in new[] { "L", "R" })
         {
             Part("intake_" + s, 1500f, 0f, 0.35f, -1f);
-            Part("gearbay_" + s, 2000f, 0f, 0.6f, 2500f);
-            Part("wingroot_" + s, 3000f, 40f, 0.18f, 3500f);
+            Part("gearbay_" + s, 2000f, 0f, 0.6f, 1680f);
+            Part("wingroot_" + s, 3000f, 40f, 0.18f, 2355f);
             // the wing is three pieces since 0.4.1; mass, area, drag and fuel split by panel size (sums unchanged)
-            Part("wing1_" + s, 2250f, 82f, 0.95f, 3100f);
-            Part("wing2_" + s, 450f, 22f, 0.23f, 675f);
+            Part("wing1_" + s, 2250f, 82f, 0.95f, 2085f);
+            Part("wing2_" + s, 450f, 22f, 0.23f, 455f);
             Part("wingtip_" + s, 100f, 0f, 0.02f, -1f);
             Part("spoiler_" + s, 150f, 3f, 0f, -1f);
             Part("flap_" + s, 300f, 4f, 0f, -1f);
@@ -1163,13 +1177,19 @@ public static class PB22Builder
         // the hangar preview and the Fly button index liveries[0] and fail on an empty list, so keep one entry
         // our three liveries (LiveryData assets inside the mod folder; PB22Skin.Apply creates them): the mod builder turns
         // each reference into an addressable override. liveries[0] is the default the hangar preview and Fly button use.
-        string[,] LIV = { { "Matte Grey", "PB22_livery_grey" }, { "Maritime Blue", "PB22_livery_maritime" }, { "Low-Level Camo", "PB22_livery_lowlevel" } };
+        // 2026-10-25: every livery in a BDF and a PALA version, tagged with its faction like the stock liveries
+        // (the faction placeholders are swapped for the game's Faction assets by the mod builder)
+        string[,] LIV = { { "BDF Matte Grey", "PB22_livery_grey_bdf", "Boscali" }, { "BDF Maritime Blue", "PB22_livery_maritime_bdf", "Boscali" },
+                          { "BDF Low-Level Camo", "PB22_livery_lowlevel_bdf", "Boscali" }, { "PALA Matte Grey", "PB22_livery_grey_pala", "Primeva" },
+                          { "PALA Maritime Blue", "PB22_livery_maritime_pala", "Primeva" }, { "PALA Low-Level Camo", "PB22_livery_lowlevel_pala", "Primeva" } };
         var liv = so.FindProperty("liveries"); liv.arraySize = LIV.GetLength(0);
         for (int i = 0; i < LIV.GetLength(0); i++)
         {
             var li = liv.GetArrayElementAtIndex(i);
             li.FindPropertyRelative("name").stringValue = LIV[i, 0];
-            li.FindPropertyRelative("faction").objectReferenceValue = null;
+            var fac = AssetDatabase.LoadMainAssetAtPath("Assets/Blueprinter/_donotship/MonoBehaviour/" + LIV[i, 2] + "_PLACEHOLDER.asset");
+            if (fac == null) log.AppendLine("MISSING FACTION " + LIV[i, 2]);
+            li.FindPropertyRelative("faction").objectReferenceValue = fac;
             var ar = li.FindPropertyRelative("assetReference");
             string guid = AssetDatabase.AssetPathToGUID(MOD + "Art/" + LIV[i, 1] + ".asset");
             if (string.IsNullOrEmpty(guid)) log.AppendLine("MISSING LIVERY " + LIV[i, 1] + " (run PB22/Apply Skin Textures first)");
@@ -1241,6 +1261,9 @@ public static class PB22Builder
             Set(nl, e + "controlState", 1);
         }
         Set(C(Need(root, "cockpit"), "ControlsFilter"), "flyByWire.yawWeathervaning", 0f);
+        // 1.0.0: yaw loop 3 -> 2, like the CAS and COIN. At 3 the long airframe shook while taxiing at medium
+        // speed; full rudder still reaches full nose wheel lock, so the tightest taxi turn is unchanged
+        Set(C(Need(root, "cockpit"), "ControlsFilter"), "flyByWire.yawTightness", 2f);
     }
 
     // every skin renderer must be in some part's damageMaterial.renderers, or it never gets the livery (it stays default

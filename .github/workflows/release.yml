@@ -36,8 +36,11 @@ jobs:
           PRE=""
           case "$TAG" in v0*) PRE="--prerelease" ;; esac
           if gh release view "$TAG" > /dev/null 2>&1; then
-            # release already out: only add or refresh the mission, leave the DLL and source as published
-            gh release upload "$TAG" PB22-To-Sink-a-Carrier.zip --clobber
+            # release already out: refresh its files in place (the 0.x releases also carry the mission zip)
+            case "$TAG" in
+              v0*) gh release upload "$TAG" PB22-To-Sink-a-Carrier.zip --clobber ;;
+              *) gh release upload "$TAG" release/PB22Trident.dll "PB22Trident-${TAG}-src.zip" --clobber ;;
+            esac
           else
             # from 1.0.0 the mission is inside the DLL, so only the 0.x releases carried it as a separate zip
             MISSION=""

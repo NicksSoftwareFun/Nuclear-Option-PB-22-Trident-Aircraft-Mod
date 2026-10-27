@@ -3,7 +3,7 @@ Blender: X right, Y forward (nose tip at Y=+17), Z up, ground Z=0. d = metres af
 Usage: blender-python build_pb22_detail.py <out.blend>
 Builds every part at rest (wing 20 deg, gear down, surfaces neutral) with its origin on its hinge, then
 UV-unwraps and makes *_colmesh collision hulls. Poses are applied afterwards with pb22_pose.py."""
-import bpy, bmesh, sys, os, math
+import bpy, bmesh, sys, os, math, json
 from mathutils import Vector, Matrix, Quaternion
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from pb22_lib import (Y, MeshBuilder, loft, section, naca_t, cyl, tube, rbox, plate, parent_keep, catmull)
@@ -118,7 +118,8 @@ BODY = Section([
 for name, d0, d1 in (('nose', 0.0, 3.4), ('fuselage', 12.6, REAR_SPLIT), ('fuselage_R', REAR_SPLIT, 31.8)):
     p = part(name, origin=ROOT_ORIGIN if name == 'fuselage' else None, parent={'nose': 'cockpit', 'fuselage_R': 'fuselage'}.get(name))
     rings = BODY.rings(d0, d1, 0.2 if d0 < 3.4 else 0.3)
-    if d0 == 0.0: rings[0] = [Vector((0, Y(0), 2.30))] * len(rings[0])
+    # 1.0.3: the tip sits on the body centreline (z 2.42 at d 0); at 2.30 it drooped below the first ring into a hook
+    if d0 == 0.0: rings[0] = [Vector((0, Y(0), 2.42))] * len(rings[0])
     loft(p.mb, rings, cap0=d0 >= 8.0, cap1=d1 >= 12.6, mat=SKIN)
 bmesh.ops.remove_doubles(PARTS['nose'].mb.bm, verts=PARTS['nose'].mb.bm.verts, dist=1e-5)
 
@@ -709,12 +710,13 @@ for side, s in (('R', 1), ('L', -1)):
 # close after it is up (and stay open while the gear is down); the leg angle, the brace angle and the door angles are
 # all linear in the fold; the actuator halves and the lower brace link aim at each other (LookAt).
 def wheel(mb, c, r, w, axis=Vector((1, 0, 0))):
-    # tyre: rounded shoulders, 20 segments round, open sides (the rim flanges cover them); about 280 triangles
+    # tyre: rounded shoulders, 20 segments round, open sides (the rim flanges cover them); about 280 triangles.
+    # On the skin material (painted rubber in the texture) so it is in the gear bay's damage set and shreds when hit
     prof = [(-0.5, 0.60), (-0.5, 0.84), (-0.40, 0.96), (-0.20, 1.0), (0.20, 1.0), (0.40, 0.96), (0.5, 0.84), (0.5, 0.60)]
     N = 20; rings = []
     for xf, rf in prof:
         rings.append([c + Vector((xf * w, math.cos(2 * math.pi * i / N) * r * rf, math.sin(2 * math.pi * i / N) * r * rf)) for i in range(N)])
-    loft(mb, rings, False, False, TYRE)
+    loft(mb, rings, False, False, SKIN)
     # wheel: rim flanges, a dished hub and the hub cap
     hub = [(-0.52, 0.30), (-0.52, 0.64), (-0.40, 0.40), (0.40, 0.40), (0.52, 0.64), (0.52, 0.30)]
     rings = [[c + Vector((xf * w, math.cos(2 * math.pi * i / 16) * r * rf, math.sin(2 * math.pi * i / 16) * r * rf)) for i in range(16)] for xf, rf in hub]
@@ -1046,21 +1048,23 @@ for o in C_FX.objects: o.hide_render = True
 exec(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'pb22_vismat.py')).read())
 
 # ================================================================ triangle budget: merge near-coplanar faces of the internals
-# (limited dissolve, 5 deg, never across materials or sharp edges; skin, glass and tyres are left exactly as built)
-KEEP_TOPO = ('PB22_skin', 'PB22_glass', 'PB22_tyre')
+# (limited dissolve, 5 deg, never across materials or sharp edges; skin, glass, tyres and honeycomb are left exactly as built)
+KEEP_TOPO = ('PB22_skin', 'PB22_glass', 'PB22_tyre', 'PB22_honey')   # honeycomb: big merged faces bulge through the skin
 def _internal(o, f):
     m = o.data.materials[f.material_index] if f.material_index < len(o.data.materials) else None
     return m is not None and m.name not in KEEP_TOPO
-for o in C_MODEL.objects:
-    if o.type != 'MESH' or o.name.startswith(('slimelight', 'nozzle', 'navlight')): continue   # exterior strips and nozzles keep their curves
-    bm = bmesh.new(); bm.from_mesh(o.data)
-    fs = [f for f in bm.faces if _internal(o, f)]
-    if fs:
-        es = list({e for f in fs for e in f.edges if all(_internal(o, g) for g in e.link_faces)})
-        vs = list({v for e in es for v in e.verts if all(_internal(o, g) for g in v.link_faces)})
-        bmesh.ops.dissolve_limit(bm, angle_limit=math.radians(5.0), verts=vs, edges=es, delimit={'MATERIAL', 'SHARP'})
-        bm.to_mesh(o.data)
-    bm.free()
+def dissolve_internals(delimit=('MATERIAL', 'SHARP')):
+    for o in C_MODEL.objects:
+        if o.type != 'MESH' or o.name.startswith(('slimelight', 'nozzle', 'navlight')): continue   # exterior strips and nozzles keep their curves
+        bm = bmesh.new(); bm.from_mesh(o.data)
+        fs = [f for f in bm.faces if _internal(o, f)]
+        if fs:
+            es = list({e for f in fs for e in f.edges if all(_internal(o, g) for g in e.link_faces)})
+            vs = list({v for e in es for v in e.verts if all(_internal(o, g) for g in v.link_faces)})
+            bmesh.ops.dissolve_limit(bm, angle_limit=math.radians(5.0), verts=vs, edges=es, delimit=set(delimit))
+            bm.to_mesh(o.data)
+        bm.free()
+dissolve_internals()
 
 # ================================================================ UVs: smart project, shared texel density, one atlas per material family
 # The painted skin texture is shared by every face with the PB22_skin material, so those faces get the whole atlas
@@ -1092,6 +1096,14 @@ def unwrap(objs, pick=None, world=None):
         bpy.ops.uv.select_all(action='SELECT')
         bpy.ops.uv.average_islands_scale()
         if world is None:
+            # tyres are plain rubber: half the texel density of the painted skin
+            for o in objs:
+                if not o.name.startswith('wheel_'): continue
+                bm = bmesh.from_edit_mesh(o.data); uvl = bm.loops.layers.uv.active
+                for f in bm.faces:
+                    if f.select:
+                        for l in f.loops: l[uvl].uv = l[uvl].uv * 0.5
+                bmesh.update_edit_mesh(o.data)
             bpy.ops.uv.pack_islands(rotate=True, margin_method='FRACTION', margin=0.001, shape_method='CONCAVE')
         else:
             for o in objs:
@@ -1110,6 +1122,67 @@ mech = [o for o in C_MODEL.objects if o.type == 'MESH' and o not in skin]
 if os.environ.get('UV', '1') == '1':
     # skin faces get the packed livery atlas; everything else is at stock world scale for jet_mechanical / aircraft_structure
     unwrap(skin, lambda mn: mn != 'PB22_skin', world=2.5); unwrap(skin, lambda mn: mn == 'PB22_skin'); unwrap(mech, world=2.5)
+
+# 1.0.2: colliders, visible materials and UVs are all made BEFORE the rip, so the rip line runs through the UV islands
+# (no texture seam along it) and the hulls keep the parts' own shapes (the ripped tongues made neighbouring hulls
+# overlap by up to 0.9 m and broke the nose joint at spawn). Every face also remembers the part it was built in
+# ('opart', names in the scene's 'opart_names'): the texture painter places panel lines and markings by that part,
+# so they no longer stop at the rip line.
+_onames = sorted(o.name for o in C_MODEL.objects if o.type == 'MESH')
+bpy.context.scene['opart_names'] = json.dumps(_onames)
+for o in C_MODEL.objects:
+    if o.type != 'MESH': continue
+    a = o.data.attributes.get('opart') or o.data.attributes.new('opart', 'INT', 'FACE')
+    a.data.foreach_set('value', [_onames.index(o.name)] * len(o.data.polygons))
+# torn break lines at the damage-part joints (pb22_rip.py). The seams are set out with the wings forward, so cut in
+# that pose and put every part back afterwards
+if os.environ.get('RIP', '1') == '1':
+    import pb22_rip
+    from pb22_pose import apply_pose as _pose
+    _keep = {o.name: o.matrix_basis.copy() for o in bpy.data.objects}
+    _pose(); bpy.context.view_layer.update()
+    pb22_rip.rip_all({o.name: o for o in C_MODEL.objects if o.type == 'MESH'})
+    for o in bpy.data.objects: o.matrix_basis = _keep[o.name]
+    bpy.context.view_layer.update()
+    # the bulkheads holed at the seams: merge their pieces like the other internals (never across UV islands now)
+    dissolve_internals(('MATERIAL', 'SHARP', 'UV'))
+else:
+    # 1.0.5 stock joints (like the stock aircraft): keep the straight cuts, make both sides share every vertex,
+    # drop the hidden skin end caps and hole the closing bulkheads, so a broken end shows the inside like stock
+    import pb22_stockcut
+    from pb22_pose import apply_pose as _pose
+    _keep = {o.name: o.matrix_basis.copy() for o in bpy.data.objects}
+    _pose(); bpy.context.view_layer.update()
+    _objs = {o.name: o for o in C_MODEL.objects if o.type == 'MESH'}
+    pb22_stockcut.open_caps(_objs)
+    pb22_stockcut.seal(_objs)
+    for o in bpy.data.objects: o.matrix_basis = _keep[o.name]
+    bpy.context.view_layer.update()
+    dissolve_internals(('MATERIAL', 'SHARP', 'UV'))
+
+# honeycomb core under the skin (stock Medusa / Ifrit idea, pb22_honey.py), trimmed wherever it would cross anything
+# in any pose the parts move through, then checked again
+if os.environ.get('HONEY', '1') == '1':
+    import pb22_honey
+    from pb22_pose import apply_pose as _pose
+    _keep = {o.name: o.matrix_basis.copy() for o in bpy.data.objects}
+    _m = lambda: {o.name: o for o in C_MODEL.objects if o.type == 'MESH'}
+    _hc = pb22_honey.make_liners(_m(), C_MODEL)
+    _poses = (dict(gear=0.0, doors=1.0, bay=1.0, flap=1.0, slat=1.0, spoiler=1.0), dict(gear=1.0, doors=0.0, sweep=22.0),
+              dict(gear=1.0, doors=0.0, sweep=45.0, flap=1.0, slat=1.0))
+    for _p in _poses:
+        _pose(**_p); bpy.context.view_layer.update()
+        _hc = pb22_honey.trim_liners(_hc, _m())
+    _hc = pb22_honey.hide_visible(_hc, _m(), (dict(), ) + _poses, _pose)
+    _nbad = 0
+    for _p in _poses:
+        _pose(**_p); bpy.context.view_layer.update()
+        _nbad += len(pb22_honey.check_liners(_hc, _m()))
+    if _hc: unwrap(_hc, world=2.5)       # the stock honeycomb pattern tiles at world scale, like the other internals
+    print('HONEYCOMB', len(_hc), 'liners,', sum(sum(len(q.vertices) - 2 for q in h.data.polygons) for h in _hc), 'tris, clip crossings', _nbad)
+    for o in bpy.data.objects:
+        if o.name in _keep: o.matrix_basis = _keep[o.name]
+    bpy.context.view_layer.update()
 
 tris = 0
 for o in C_MODEL.objects:

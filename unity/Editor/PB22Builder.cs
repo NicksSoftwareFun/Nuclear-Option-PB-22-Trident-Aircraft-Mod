@@ -300,6 +300,9 @@ public static class PB22Builder
         // canopy and window glass: the Darkreach's glass, as stock
         var sfb = AssetDatabase.LoadAssetAtPath<Material>(PH_MAT + "SFB_glass_PLACEHOLDER.mat");
         if (sfb != null) MAT["PB22_glass"] = sfb; else Debug.LogWarning("SFB_glass_PLACEHOLDER not found");
+        // honeycomb core under the skin: the game's shared honeycomb material, as on the stock Medusa and Ifrit
+        var hcm = AssetDatabase.LoadAssetAtPath<Material>(PH_MAT + "honeycomb_PLACEHOLDER.mat");
+        if (hcm != null) MAT["PB22_honey"] = hcm; else { Debug.LogWarning("honeycomb_PLACEHOLDER not found"); MAT["PB22_honey"] = MAT["PB22_int"]; }
 
         root = PrefabUtility.LoadPrefabContents(SRC).transform;
         try
@@ -316,6 +319,7 @@ public static class PB22Builder
             Pylons();
             Misc();
             Purge();
+            Honeycomb();
             if (capsule != null) { Object.DestroyImmediate(capsule); capsule = null; }
             Aero();
             Durability();
@@ -710,11 +714,17 @@ public static class PB22Builder
             var jn = nz.Find("nozzle" + n);
             jn.position = P("thrustTransform" + n); jn.rotation = Quaternion.identity;
             var glow = jn.Find("afterburner" + n + "_nozzle_glow");
-            // size = mesh x glow scale x flame scale (the JetNozzle only drives brightness). Nozzle exit is 0.97 m across: the glow
-            // (mesh 0.92 x 0.42) comes to 0.90 x 0.88 m, the flame (mesh 1.36 x 0.50 x 3.6, widest at its start) to 0.78 m wide, 19.4 m long
+            // size = mesh x glow scale x flame scale transform. Nozzle exit is 0.97 m across: the glow (mesh 0.92 x 0.42) comes to
+            // 0.90 x 0.88 m; the flame mesh is 1.36 x 0.50 x 3.6 m, widest at its start
             glow.localPosition = new Vector3(0f, 0f, 0.1f); glow.localRotation = Quaternion.identity; glow.localScale = new Vector3(0.98f, 2.1f, 1f);
-            var flame = glow.GetChild(0);
-            flame.localPosition = new Vector3(0f, 0f, 0.09f); flame.localRotation = Quaternion.identity; flame.localScale = new Vector3(0.46f, 0.58f, 7.0f);
+            // the JetNozzle rewrites the flame's own localScale to (1, 1, ~1) every frame, so scaling the flame does nothing in
+            // game. The flame hangs under its own scale transform instead and that is what sets its size: 1.33 x 1.05 m, as it
+            // always showed, and 7.2 m long (twice the 3.6 m it showed before, 1.0.1)
+            var fs = glow.Find("afterburner" + n + "_flame_scale");
+            var flame = fs != null ? fs.GetChild(0) : glow.GetChild(0);
+            if (fs == null) { fs = New("afterburner" + n + "_flame_scale", glow); flame.SetParent(fs, false); }
+            fs.localPosition = new Vector3(0f, 0f, 0.09f); fs.localRotation = Quaternion.identity; fs.localScale = new Vector3(1f, 1f, 2f);
+            flame.localPosition = Vector3.zero; flame.localRotation = Quaternion.identity; flame.localScale = Vector3.one;
         }
     }
 
@@ -1038,6 +1048,7 @@ public static class PB22Builder
         Arm("fuselage_FF", 40f, 30f, 80f, 6f);
         Arm("cockpit", 40f, 30f, 80f, 6f);
         Arm("nose", 15f, 4f, 40f, 2.5f);
+        Set(C(Find(root, "nose"), "AeroPart"), "structuralThreshold", 0f);   // breaks off at 0 HP like the stock noses (was -25 from the AB-4)
         Arm("tail", 20f, 8f, 70f, 4f);
         Arm("rudder_L", 15f, 4f, 40f, 2.5f);
         JointForce("rudder_L", "tail", 120000f); JointForce("rudder_L", "fuselage_R", 120000f); JointForce("rudder_L", "PB22Trident", 100000f);
@@ -1268,6 +1279,27 @@ public static class PB22Builder
 
     // every skin renderer must be in some part's damageMaterial.renderers, or it never gets the livery (it stays default
     // grey: the stabilator tops, slats, leg doors and mid pylons did). Child renderers join their nearest owning part.
+    // honeycomb core (1.0.1): one '<part>_hc' mesh per part, a child of the part that carries <part>'s mesh. It is in
+    // no damage list, so it never holes and shows through torn skin instead of the empty inside (stock Medusa / Ifrit)
+    static void Honeycomb()
+    {
+        int n = 0;
+        foreach (var e in L.Values.Where(x => x.name.EndsWith("_hc") && M.ContainsKey(x.name)))
+        {
+            Transform par = null;
+            if (e.parent != null && M.ContainsKey(e.parent))
+                foreach (var mf in root.GetComponentsInChildren<MeshFilter>(true))
+                    if (mf.sharedMesh == M[e.parent]) { par = mf.transform; break; }
+            if (par == null) { log.AppendLine("HONEYCOMB: no part for " + e.name); continue; }
+            var t = par.Find(e.name);
+            if (t == null) { t = new GameObject(e.name).transform; t.SetParent(par, false); }
+            Place(t, e.name); SetMesh(t, e.name);
+            t.GetComponent<MeshRenderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            n++;
+        }
+        log.AppendLine("honeycomb " + n);
+    }
+
     static void SkinCoverage()
     {
         var covered = new HashSet<Renderer>();

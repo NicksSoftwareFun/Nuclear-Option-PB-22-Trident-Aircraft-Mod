@@ -2,14 +2,15 @@
 Usage: python3 g_leaks.py <blend> <out.json> [rays] [pose: up|down]
 Fires random sight lines from outside the aircraft at points spread over every surface and keeps the first thing each
 line hits. A hit is reported when, from outside, a line reaches:
-  back    - the back side of a face (a hole in a skin, or a part with missing faces)
+  back    - the back side of a face (a hole in a skin, or a part with missing faces); a hit that a 1 mm nudge of the
+            line turns into a front face is an edge graze, not a hole, and is not counted
   inner   - an internal-system material (fuel cells and lines, hydraulics, oxygen, wiring)
   stowed  - a landing gear part while the gear is up
   cavity  - a non-skin face inside a bay, well or recess while its doors are shut (pose 'up' only)
 Glass is see-through, so lines that hit glass first are skipped (the cockpit is meant to show through it).
 Each finding keeps one sample hit with the direction it was seen from (pointing back toward the viewer, in x, d, z).
 Hits are grouped in 10 cm cells and listed with the part name and position (x, d = metres aft of the nose, z)."""
-import bpy, os, sys, json, math, random
+import os, bpy, sys, json, math, random
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from mathutils import Vector
 from mathutils.bvhtree import BVHTree
@@ -79,7 +80,14 @@ for _ in range(N):
     name, mat, _ = info[idx]
     if mat == 'PB22_glass': counts['glass'] += 1; continue
     kind = None
-    if nrm.dot(dvec) > 0.05 and mat not in ('PB22_tyre',): kind = 'back'
+    if nrm.dot(dvec) > 0.05 and mat not in ('PB22_tyre',):
+        # a line that grazes an edge shared by two faces can report either one: nudge it 1 mm two ways and only
+        # count the hit when both nudged lines also see a back face (a real hole is wider than that)
+        side = dvec.orthogonal().normalized(); real = True
+        for off in (side * 0.001, dvec.cross(side) * 0.001):
+            l2, n2, i2, _ = bvh.ray_cast(org + off, dvec, 2 * R)
+            if l2 is None or n2.dot(dvec) <= 0.05 or info[i2][1] == 'PB22_glass': real = False; break
+        if real: kind = 'back'
     elif mat in INNER: kind = 'inner'
     elif pose == 'up' and name.startswith(STOWED): kind = 'stowed'
     elif pose == 'up' and mat != 'PB22_skin' and inbox(loc): kind = 'cavity'   # outer skin dipping into a box is fine

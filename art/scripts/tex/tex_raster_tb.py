@@ -55,13 +55,15 @@ if __name__ == '__main__':
     g = np.load(sys.argv[1]); fam = sys.argv[2]; S = int(sys.argv[3])
     UV, P, N, PID = g[fam + '_uv'], g[fam + '_p'], g[fam + '_n'], g[fam + '_pid']
     MAT = g[fam + '_mat'] if fam + '_mat' in g else np.zeros(len(UV), np.int16)
+    RPID = g[fam + '_rpid'] if fam + '_rpid' in g else PID
     mats = g['mats'] if 'mats' in g else np.array([fam])
     if fam in [str(x) for x in mats]:
         # only the faces with the family's own material own this atlas; other materials' faces overlap it
         own = MAT == [str(x) for x in mats].index(fam)
-        UV, P, N, PID, MAT = UV[own], P[own], N[own], PID[own], MAT[own]
+        UV, P, N, PID, MAT, RPID = UV[own], P[own], N[own], PID[own], MAT[own], RPID[own]
     pos, nrm, tan, bsg, tri, cov = raster(UV, P, N, S)
     pid = np.where(tri >= 0, PID[np.maximum(tri, 0)], -1).astype(np.int16)
+    rpid = np.where(tri >= 0, RPID[np.maximum(tri, 0)], -1).astype(np.int16)[::-1]
     mat = np.where(tri >= 0, MAT[np.maximum(tri, 0)], -1).astype(np.int16)[::-1]
     # texels per metre from triangle areas
     e1 = P[:, 1] - P[:, 0]; e2 = P[:, 2] - P[:, 0]
@@ -75,5 +77,5 @@ if __name__ == '__main__':
     near = ndimage.distance_transform_edt(~cov, return_distances=False, return_indices=True)
     idx = (near[0] * S + near[1]).astype(np.int32)
     np.savez(sys.argv[4], pos=pos.astype(np.float32), nrm=nrm.astype(np.float32), tan=tan.astype(np.float32),
-             bsg=bsg, pid=pid, cov=cov, idx=idx, ppm=ppm, names=g['names'], mat=mat, mats=mats)
+             bsg=bsg, pid=pid, rpid=rpid, cov=cov, idx=idx, ppm=ppm, names=g['names'], mat=mat, mats=mats)
     print(fam, S, 'coverage %.3f' % cov.mean(), 'texels/m %.1f' % ppm)

@@ -1,7 +1,9 @@
 """Bake ambient occlusion for the PB22_skin atlas with Cycles (CPU) and level it like the stock skins (mean ~0.85).
 Usage: python3 tex_bake_ao.py <pb22_detail.blend> <maps.npz> <out PB22_skin_ao.png> [size=4096] [samples=48]
 The .blend is only read (never saved). Pose: rest pose with the gear down and the gear doors closed (same as
-tex_geom.py); the gear legs, wheels and struts are hidden so they leave no blobs on the skin."""
+tex_geom.py); the gear legs, wheels and struts are hidden so they leave no blobs on the skin.
+Quick mode: PB22_AO_ONLY=<part,...> bakes only those skin parts (each part bakes on its own anyway), and with
+PB22_PATCH_MASK=<mask.npy> PB22_PATCH_FROM=<old ao png> only the masked texels replace the old AO."""
 import bpy, sys, os, math
 import numpy as np
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
@@ -55,6 +57,10 @@ bpy.ops.object.shade_smooth_by_angle(angle=math.radians(35))
 # hatches sitting on the hull no longer throw blotchy AO onto each other. No margin: gutters are filled below.
 sc.render.bake.margin = 0
 meshes = [o for o in model.objects if o and o.type == 'MESH' and not o.hide_render]
+ONLY = [n for n in os.environ.get('PB22_AO_ONLY', '').split(',') if n]
+if ONLY:
+    skin = [o for o in skin if o.name in ONLY]
+    print('baking only', [o.name for o in skin])
 for i, o in enumerate(skin):
     for q in meshes: q.hide_render = q is not o
     bpy.ops.object.select_all(action='DESELECT'); o.select_set(True)
@@ -79,5 +85,12 @@ idx = m['idx'] if m['idx'].shape[0] == S else None
 if idx is not None:
     ao = ao.ravel()[idx.ravel()].reshape(S, S)
 from PIL import Image
+pm, pf = os.environ.get('PB22_PATCH_MASK'), os.environ.get('PB22_PATCH_FROM')
+if pm and pf:
+    mk = np.load(pm)
+    keep = ~mk.ravel()[m['idx'].ravel()].reshape(S, S)
+    old = np.asarray(Image.open(pf).convert('L'), np.float32) / 255
+    ao = np.where(keep, old, ao)
+    print('patched %d texels into %s' % ((~keep).sum(), pf))
 Image.fromarray(np.round(ao * 255).astype(np.uint8), 'L').save(out)
 print('AO raw mean %.3f -> %.3f (strength %.2f) saved %s' % (mean, ao[cov].mean(), g, out))

@@ -16,12 +16,19 @@ BAY_BOX = (12.9, 24.4, 1.02, 2.80)  # d0, d1, |x|, z top: the weapon bays
 def _mname(o, f):
     return o.data.materials[f.material_index].name if f.material_index < len(o.data.materials) else ''
 
+def _visskin(o, f):
+    # 1.0.2: lining faces moved onto the skin here are marked, so the rip (which now runs later) and the honeycomb
+    # liners still treat them as lining, not outer skin
+    o.data.attributes['visskin'].data[f.index].value = 1
+
 def _slot(o, name):
     for i, m in enumerate(o.data.materials):
         if m and m.name == name: return i
     o.data.materials.append(VIS_MATS.get(name) or bpy.data.materials[name]); return len(o.data.materials) - 1
 
 _objs = [o for o in C_MODEL.objects if o.type == 'MESH']
+for o in _objs:
+    if o.data.attributes.get('visskin') is None: o.data.attributes.new('visskin', 'INT', 'FACE')
 _vs, _fs = [], []
 for o in _objs:
     if o.name.startswith(OPEN_OBJ): continue
@@ -59,12 +66,12 @@ for o in _objs:
                 f.material_index = _slot(o, 'PB22_cabin'); _count[(o.name, 'PB22_cabin')] = _count.get((o.name, 'PB22_cabin'), 0) + 1
                 continue
             if mn == 'PB22_int' and o.name.startswith('intake_'):
-                f.material_index = _slot(o, 'PB22_skin'); _count[(o.name, 'PB22_skin')] = _count.get((o.name, 'PB22_skin'), 0) + 1
+                f.material_index = _slot(o, 'PB22_skin'); _visskin(o, f); _count[(o.name, 'PB22_skin')] = _count.get((o.name, 'PB22_skin'), 0) + 1
                 continue
             if mn == 'PB22_int' and in_duct(c) and not o.name.startswith(('cockpit', 'fuselage_FF', 'hatch_')):
                 # duct lining: the copy facing the duct axis is what you see looking in from the intake lip
                 ax = duct_axis(1 if c.x > 0 else -1)(c)
-                if (ax - c).dot(n) > 0: f.material_index = _slot(o, 'PB22_skin'); _count[(o.name, 'PB22_skin')] = _count.get((o.name, 'PB22_skin'), 0) + 1
+                if (ax - c).dot(n) > 0: f.material_index = _slot(o, 'PB22_skin'); _visskin(o, f); _count[(o.name, 'PB22_skin')] = _count.get((o.name, 'PB22_skin'), 0) + 1
                 continue
             if (o.name.startswith('gearbay') or (o.name == 'fuselage' and BAY_BOX[0] <= d <= BAY_BOX[1] and abs(c.x) <= BAY_BOX[2] and c.z <= BAY_BOX[3]) \
                     or (o.name == 'fuselage' and 14.0 <= d <= 25.0 and abs(c.x) > 1.05 and c.z < 2.05 and c.x * n.x > 0)):

@@ -279,9 +279,10 @@ def features(M):
     # E6 dorsal chaff / flare dispensers
     for xc in (1.05, 1.40):
         b = Box(d, ax, (25.84, 26.46), (xc - 0.11, xc + 0.11), 0.015)
-        add([Fill(b, FUSE, col=(62, 68, 71), soft=0.006, sm=0.38, where=up),
-             Groove(b, FUSE, width=0.022, depth=1.0, dark=0.08, where=up),
-             Dots(b, d, ax, pitch=(0.052, 0.052), r=0.019, depth=0.55, col=(52, 57, 60), parts=FUSE, where=up, stagger=False, square=True, inset=0.018)])
+        # 1.0.2 (read as holes in game): lighter plate and coarser cells, so the cells survive the 2k texture
+        add([Fill(b, FUSE, col=(92, 98, 101), soft=0.006, sm=0.38, where=up),
+             Groove(b, FUSE, width=0.022, depth=1.0, dark=0.04, where=up),
+             Dots(b, d, ax, pitch=(0.09, 0.09), r=0.03, depth=0.55, col=(58, 63, 66), parts=FUSE, where=up, stagger=False, square=True, inset=0.024)])
     # S8 / 3.5 jacking points
     add([ST.jack(d=12.80, x=0.0, z=None, parts=FUSE_FWD + ['fuselage']),
          ST.jack(d=21.0, x=2.05, z=None, parts=['gearbay_*', 'wingroot_*', 'fuselage']),
@@ -567,6 +568,13 @@ def finish(M, L, vnoise):
         L.col *= (1 + 0.035 * sc)[:, None]
         L.sm += 0.04 * sc
     L.sm = np.clip(L.sm, 0.2, 0.75)
+    # tyres (on the skin material so they shred with the gear bay): plain dark rubber in every livery, matte, no
+    # engraving or scuffs, a little lighter and dustier on the tread shoulders' tone noise
+    T = M.select(['wheel_*'])
+    if len(T):
+        L.col[T] = np.array((0.105, 0.105, 0.11), np.float32) * (1 + 0.06 * vnoise(P[T], 0.15, seed=71, octaves=2))[:, None]
+        L.sm[T] = 0.22; L.mt[T] = 0.0
+        L.hneg[:, T] = 0.0; L.hpos[:, T] = 0.0
 
 
 def TF_hash(i, k):
@@ -591,6 +599,10 @@ def damage(M, L, vnoise, H, e):
     col *= (1 - 0.25 * groove)[:, None]
     al = vnoise(P, 1.2, seed=23, octaves=4)
     alpha = np.clip(0.5 + 0.55 * al, 0, 1)
+    T = M.select(['wheel_*'])                   # shredded tyres: scorched rubber and bare cord
+    if len(T):
+        cord = np.clip(0.5 + 0.8 * vnoise(P[T], 0.05, seed=73, octaves=2), 0, 1)
+        col[T] = np.array((0.05, 0.048, 0.046), np.float32) * (1 - cord[:, None]) + np.array((0.20, 0.18, 0.15), np.float32) * cord[:, None]
     db = np.concatenate([np.clip(col, 0, 1), alpha[:, None]], 1)
     # normal: dents (3D noise height field, metres) + the engraved structure, stronger
     _, hd = M.coarse(lambda Q: 0.006 * vnoise(Q, 0.35, seed=31, octaves=3) + 0.0015 * vnoise(Q, 0.08, seed=32, octaves=2), 2)

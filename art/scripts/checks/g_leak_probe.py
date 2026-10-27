@@ -1,6 +1,6 @@
 """Re-cast the sample sight line of chosen g_leaks findings and print the faces along it.
 Usage: python3 g_leak_probe.py <blend> <leaks.json> <i> [<i> ...]   (finding indexes, 0 = most hits)"""
-import bpy, os, sys, json
+import os, bpy, sys, json
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from mathutils import Vector
 from mathutils.bvhtree import BVHTree

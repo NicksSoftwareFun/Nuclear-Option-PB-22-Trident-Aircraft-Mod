@@ -48,9 +48,13 @@ If you installed the mission by hand for 0.9.4, delete the `PB-22 - To Sink a Ca
 
 Optional settings are in `BepInEx\config\nick.nuclearoption.pb22trident.cfg`. `Testing/DebugLog` writes fan diagnostics to the BepInEx log (off by default). `Testing/LandingLog` writes one line each time an AI PB-22 changes landing phase (off by default).
 
+## Making a livery
+
+`Livery Bundle/` has everything needed to paint a livery: the complete exterior as an FBX with the in-game texture layout, the base colour, the surface maps, a UV layout overlay and the shipped liveries. Import `PB22 Exterior.fbx` into Blender and paint on the skin. See `Livery Bundle/README.txt`. The bundle matches mod version 1.1.0 and later.
+
 ## Building from source
 
-- `art/scripts` builds the model and textures in Blender (`build_pb22_detail.py`, then `export_pb22.py`; textures in `art/scripts/tex`). `art/cockpit` builds the cockpit model and atlas.
+- `art/scripts` builds the model and textures in Blender (`build_pb22_detail.py`, then `export_pb22.py`; textures in `art/scripts/tex`). `export_livery_bundle.py` writes the Livery Bundle FBX and UV layout. `art/cockpit` builds the cockpit model and atlas.
 - `unity/Editor` holds the Unity editor tools that assemble the prefab in a Blueprinter project (menu PB22). Build the bundle with Blueprinter > Mod Builder.
 - Copy the `.nobp` next to `src/PB22Trident.csproj` and run `dotnet build -c Release -p:GameDir="<your Nuclear Option folder>"`.
 

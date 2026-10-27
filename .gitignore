@@ -8,3 +8,5 @@ __pycache__/
 art/in/
 *.obj
 *.fbx
+# the livery bundle exterior is the mod's own model
+!Livery Bundle/*.fbx

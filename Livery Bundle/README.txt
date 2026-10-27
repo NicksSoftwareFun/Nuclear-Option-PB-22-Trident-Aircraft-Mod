@@ -1,8 +1,8 @@
 PB-22 Trident Livery Bundle
 
 Everything you need to paint a livery for the PB-22 Trident in Blender (or any 3D paint program).
-This bundle matches mod version 1.0.5 and later. Liveries painted on the older template (1.0.0 to 1.0.4) do not
-line up on 1.0.5, because the texture layout changed when the airframe was rebuilt.
+This bundle matches mod version 1.1.0 and later. Liveries painted for 1.0.0 do not line up on 1.1.0, because the
+texture layout changed when the airframe was rebuilt.
 
 FILES
 

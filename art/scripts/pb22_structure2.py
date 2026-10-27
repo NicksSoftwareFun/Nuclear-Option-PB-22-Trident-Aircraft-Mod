@@ -264,7 +264,11 @@ def fspar_low(m, c, zs, t=0.03, inset=0.012, dlo=-1e9, dhi=1e9):
     for dd in (dlo, dhi):
         zc = z_at(c, dd)
         if zs[0] < zc < zs[-1]: zl.append(zc)
-    zl = sorted(set(round(z, 5) for z in zl)); e = Vector((0, t / 2, 0)); rings = []
+    zl = sorted(set(round(z, 5) for z in zl))
+    # 1.0.4: the spine skin curves in between samples, so a long straight edge cut through it (a spar edge was visible
+    # standing out of the spine behind the chaff grilles); sample the edge every 4 cm so it follows the skin
+    zl = [zl[0]] + [z for a, b in zip(zl, zl[1:]) for z in [a + (b - a) * j / max(1, math.ceil((b - a) / 0.04)) for j in range(1, max(1, math.ceil((b - a) / 0.04)) + 1)]]
+    e = Vector((0, t / 2, 0)); rings = []
     for z in zl:
         d = fin_d(z, c); hw = skin_hw(d, z)
         if hw is None: continue

@@ -8,7 +8,9 @@ Writes  PB22_skin_b.png    base colour = default livery (sRGB)
         PB22_skin_dmg_n.png  damage normal map
         PB22_skin_height.png (16-bit engraving height, for checking only)
 AO comes from tex_bake_ao.py (Blender).
-PB22_DECALS=1 leaves out every Decal feature (stencils then live on the decal meshes, see tex_decals.py)."""
+PB22_DECALS=1 leaves out every Decal feature (stencils then live on the decal meshes, see tex_decals.py).
+Quick mode (tex_quick.sh): PB22_PATCH_MASK=<mask.npy> PB22_PATCH_FROM=<old outdir> paints the features only on the
+masked texels and writes the old images with just those texels (and their gutters) replaced."""
 import sys, os, time, importlib, fnmatch
 import numpy as np
 from PIL import Image
@@ -134,6 +136,14 @@ def run(maps, outdir, specname='pb22_panels', geom=None):
     t0 = time.time()
     spec = importlib.import_module(specname)
     M = Model(maps, geom)
+    patch = os.environ.get('PB22_PATCH_MASK'), os.environ.get('PB22_PATCH_FROM')
+    mk = np.load(patch[0]).ravel()[M.C] if patch[0] else None
+    if mk is not None: print('patch: %d of %d texels' % (mk.sum(), len(mk)))
+    noise = vnoise
+    if mk is not None:                                # per-texel noise only where it is kept
+        def noise(P, *a, **k):
+            if len(P) != len(mk): return vnoise(P, *a, **k)
+            r = np.zeros(len(P), np.float32); r[mk] = vnoise(P[mk], *a, **k); return r
     for pl in TF.Planform.REG + TF.Centreline.REG:
         pl.build(M)
     feats = spec.features(M)
@@ -141,7 +151,7 @@ def run(maps, outdir, specname='pb22_panels', geom=None):
         feats = [f for f in feats if not isinstance(f, TF.Decal)]
     L = Layers(len(M.C), spec.BASE, spec.SMOOTH)
     if hasattr(spec, 'base_paint'):
-        spec.vnoise_ref[0] = vnoise
+        spec.vnoise_ref[0] = noise
         spec.base_paint(M, L)
     e = 0.5 / M.ppm                                   # half a texel: central-difference step for the normal map
     nfe = 0
@@ -151,6 +161,7 @@ def run(maps, outdir, specname='pb22_panels', geom=None):
     for k, f in enumerate(feats):
         tf = time.time()
         I = M.select(f.parts, f.bbox, f.margin)
+        if mk is not None: I = I[mk[I]]
         if len(I) == 0: continue
         P, N = M.P[I], M.N[I]
         if f.where is not None:
@@ -169,7 +180,7 @@ def run(maps, outdir, specname='pb22_panels', geom=None):
     if os.environ.get('TEX_PROFILE'):
         for t in sorted(times, key=lambda t: -t[0])[:15]: print('  %.2fs %8d #%d %s %s %s' % t)
     print('features', len(feats), 'applied', nfe, '%.1fs' % (time.time() - t0))
-    spec.finish(M, L, vnoise)
+    spec.finish(M, L, noise)
     # ---------------------------------------------------------- normal map
     H = L.hneg + L.hpos
     k = spec.DEPTH_M
@@ -180,8 +191,16 @@ def run(maps, outdir, specname='pb22_panels', geom=None):
     n = np.stack([-dT, -dB, np.ones_like(dT)], 1)
     n /= np.linalg.norm(n, axis=1, keepdims=True)
     os.makedirs(outdir, exist_ok=True)
+    keep = None
+    if mk is not None:                                # texels (gutters included) whose source texel is not repainted
+        keep = ~mk[M.inv[M.idx]].reshape(M.S, M.S)
+    def patched(im, name):
+        if keep is None: return im
+        old = np.asarray(Image.open(os.path.join(patch[1], name)))
+        if old.shape != im.shape: raise SystemExit('patch: %s shape %s vs %s' % (name, old.shape, im.shape))
+        return np.where(keep.reshape(keep.shape + (1,) * (im.ndim - 2)), old, im).astype(im.dtype)
     def save(arr, name, mode):
-        im = M.to_image(arr)
+        im = patched(M.to_image(arr), name)
         Image.fromarray(im, mode).save(os.path.join(outdir, name), optimize=False, compress_level=6)
         print('wrote', name)
     q8 = lambda a: np.clip(np.round(a * 255), 0, 255).astype(np.uint8)
@@ -190,9 +209,9 @@ def run(maps, outdir, specname='pb22_panels', geom=None):
     sm = np.clip(L.sm, 0, 1); mt = np.clip(L.mt, 0, 1)
     save(q8(np.stack([mt, mt, mt, sm], 1)), 'PB22_skin_m.png', 'RGBA')
     hh = np.clip(H[0] * 0.25 + 0.5, 0, 1)
-    Image.fromarray((M.to_image(hh) * 65535).astype(np.uint16)).save(os.path.join(outdir, 'PB22_skin_height.png'))
+    Image.fromarray(patched((M.to_image(hh) * 65535).astype(np.uint16), 'PB22_skin_height.png')).save(os.path.join(outdir, 'PB22_skin_height.png'))
     # ---------------------------------------------------------- damage maps
-    db, dn = spec.damage(M, L, vnoise, H, e)
+    db, dn = spec.damage(M, L, noise, H, e)
     save(q8(db), 'PB22_skin_dmg_b.png', 'RGBA')
     save(q8(dn * 0.5 + 0.5), 'PB22_skin_dmg_n.png', 'RGB')
     # stats

@@ -100,6 +100,21 @@ def frame(name, d, depth=0.07, width=0.045, step=3, off=0.012, mask=None, mat=ME
         if not keep[i]: run = []
 
 
+_TOP_BVH = []
+def _skin_top(x, y):
+    """Height of the outer skin straight above (x, y): the fuselage and nacelle tops as built so far."""
+    if not _TOP_BVH:
+        from mathutils.bvhtree import BVHTree
+        vs, fs = [], []
+        for n_ in ('fuselage_F', 'fuselage', 'fuselage_R'):
+            bm_ = PARTS[n_].mb.bm; bm_.verts.ensure_lookup_table(); bm_.verts.index_update(); b0 = len(vs)
+            vs.extend(v.co.copy() for v in bm_.verts)
+            fs.extend([b0 + v.index for v in f.verts] for f in bm_.faces if f.material_index == SKIN)
+        _TOP_BVH.append(BVHTree.FromPolygons(vs, fs, epsilon=0.0))
+    h = _TOP_BVH[0].ray_cast(Vector((x, y, 6.0)), Vector((0, 0, -1)))[0]
+    return h.z if h is not None else None
+
+
 def longeron(name, d0, d1, th, size=0.06, off=0.045, mask=None, step=0.45):
     mb = PARTS[name].mb
     n = max(int(math.ceil((d1 - d0) / step)), 1)
@@ -107,6 +122,13 @@ def longeron(name, d0, d1, th, size=0.06, off=0.045, mask=None, step=0.45):
     # over the nacelles the outer skin is the flat intake box top (z 3.64), inside the round body line: keep the
     # longeron under it, or it pokes through the skin along the shoulders
     pts = [Vector((p.x, p.y, min(p.z, 3.64 - 0.06 - size * 0.7))) if 14.6 <= Y(0) - p.y <= 26.3 else p for p in pts]
+    # 1.0.4: behind the wing the nacelle top slopes down to the round tail, so a fixed 3.64 let the front end of the
+    # upper rear longerons stand out of the skin (visible behind the dorsal grilles): stay 2.5 cm under the real top
+    def under_top(p):
+        t = _skin_top(p.x, p.y)
+        if t is None or p.z < t - 0.3: return p
+        return Vector((p.x, p.y, min(p.z, t - 0.025 - size * 0.7)))
+    pts = [under_top(p) for p in pts]
     run = []
     for p in pts + [None]:
         if p is not None and not (mask and mask(p)): run.append(p); continue
@@ -315,7 +337,7 @@ for s in (1, -1):
 
 
 # ================================================================ wing-box carry-through over the bay
-CT = (19.6, 22.6, 2.93, 3.50, 1.95)
+CT = (19.6, 22.6, 2.93, 3.50, 1.78)   # 1.0.2: was 1.95, the rear spar cap ends poked through the sloping top of the flanks
 d0, d1, z0, z1, xw = CT
 for dw in (d0, d1):
     rbox(fbm, (0, Y(dw), (z0 + z1) / 2), (2 * xw, 0.04, z1 - z0), 0.008, MECH)              # front and rear spar webs

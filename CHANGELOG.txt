@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.1.0
+- Damage now works like the stock aircraft. Parts break off along straight panel lines with no gaps at the joints, the skin can be seen from both sides, and torn metal edges come from the damage texture. A broken-off section shows the frames and the inside of the skin instead of a flat lid.
+- Honeycomb core shows under torn skin, using the game's own honeycomb material.
+- Tyres shred when the main gear pods are hit.
+- Afterburner flame drawn at its intended length.
+- Nose tip straightened. It sat 12 cm low and looked hooked.
+- Structure no longer pokes through the skin behind the dorsal grilles or along the spine.
+- Dorsal chaff dispensers restyled so they no longer read as holes.
+- New Livery Bundle folder in the repository for painting your own liveries. The texture layout changed in this release, so liveries painted for 1.0.0 do not line up.
+
 ## 1.0.0
 - Six liveries: BDF and PALA versions of Matte Grey, Maritime Blue and Low-Level Camo. Camo and grey carry full-colour faction roundels on the fin and wings; Maritime Blue gets low-vis ones.
 - The "To Sink a Carrier" mission now comes with the mod and is listed with the built-in missions. No separate download.

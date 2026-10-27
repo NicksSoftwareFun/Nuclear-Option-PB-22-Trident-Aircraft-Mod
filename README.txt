@@ -50,7 +50,7 @@ Optional settings are in `BepInEx\config\nick.nuclearoption.pb22trident.cfg`. `T
 
 ## Making a livery
 
-`Livery Bundle/` has everything needed to paint a livery: the complete exterior as an FBX with the in-game texture layout, the base colour, the surface maps, a UV layout overlay and the shipped liveries. Import `PB22 Exterior.fbx` into Blender and paint on the skin. See `Livery Bundle/README.txt`. The bundle matches mod version 1.0.5 and later.
+`Livery Bundle/` has everything needed to paint a livery: the complete exterior as an FBX with the in-game texture layout, the base colour, the surface maps, a UV layout overlay and the shipped liveries. Import `PB22 Exterior.fbx` into Blender and paint on the skin. See `Livery Bundle/README.txt`. The bundle matches mod version 1.1.0 and later.
 
 ## Building from source
 

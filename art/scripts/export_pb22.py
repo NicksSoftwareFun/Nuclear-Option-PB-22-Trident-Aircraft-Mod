@@ -62,11 +62,28 @@ bpy.ops.object.select_all(action='DESELECT')
 for o in exp.objects: o.select_set(True)
 bpy.context.view_layer.objects.active = exp.objects[0]
 bpy.ops.object.shade_smooth_by_angle(angle=math.radians(35))
-# triangulate here (beauty split) so Unity never has to split non-planar n-gon caps itself
+# triangulate every face here (beauty split), the same split tex_geom_m.py paints with, so a straight painted line
+# stays straight across warped quads (Unity's own quad split differs) and Unity never splits non-planar n-gon caps itself
 import bmesh
 for o in exp.objects:
     bm = bmesh.new(); bm.from_mesh(o.data)
-    bmesh.ops.triangulate(bm, faces=[f for f in bm.faces if len(f.verts) > 4], quad_method='BEAUTY', ngon_method='BEAUTY')
+    bmesh.ops.triangulate(bm, faces=bm.faces, quad_method='BEAUTY', ngon_method='BEAUTY')
+    # 1.0.5: double-sided skin like every stock aircraft. Each skin triangle gets a back-facing twin on the same spot
+    # with the same UVs, so the inside of the skin shows (in shadow) through a broken joint or a damage hole and a
+    # hairline crack at a joint shows the inside of the aircraft, never the sky. Triangles that already have a
+    # reversed twin (thin panels built from both sides) are left alone.
+    sk = [i for i, m in enumerate(o.data.materials) if m and m.name == 'PB22_skin']
+    if sk and 'colmesh' not in o.name and not o.name.startswith('wheel'):
+        key = lambda f: tuple(sorted(tuple(round(c, 5) for c in v.co) for v in f.verts))
+        tri = [f for f in bm.faces if f.material_index in sk]
+        seen = {}
+        for f in tri: seen[key(f)] = seen.get(key(f), 0) + 1
+        one = [f for f in tri if seen[key(f)] == 1]
+        if one:
+            out = bmesh.ops.duplicate(bm, geom=one)
+            nf = [g for g in out['geom'] if isinstance(g, bmesh.types.BMFace)]
+            bmesh.ops.reverse_faces(bm, faces=nf)
+            print('double-sided', o.name, len(nf), 'twins')
     bm.faces.sort(key=lambda f: f.material_index)
     bm.to_mesh(o.data); bm.free()
 # LOD1 shells are the colmeshes; stock LOD meshes carry vertex colour (41,41,41) for the LOD shader

@@ -29,6 +29,7 @@ If you installed the mission by hand for 0.9.4, delete the `PB-22 - To Sink a Ca
 
 - Variable-sweep wings, airbrakes, flaps and full landing gear animation.
 - Forward and rear weapon bays, two glove pylons and two wing pylons. Preset loadouts for anti-ship, strike and escort roles.
+- Also carries weapons from the Aryx Weaponry Pack and Boscali Summer when those mods are installed. Neither is required.
 - Built-in jammer.
 - Four crew stations with ejection seats. The crew hatches double as entry doors.
 - Live cockpit gauges and a working standby horizon.
@@ -55,6 +56,7 @@ Optional settings are in `BepInEx\config\nick.nuclearoption.pb22trident.cfg`. `T
 ## Building from source
 
 - `art/scripts` builds the model and textures in Blender (`build_pb22_detail.py`, then `export_pb22.py`; textures in `art/scripts/tex`). `export_livery_bundle.py` writes the Livery Bundle FBX and UV layout. `art/cockpit` builds the cockpit model and atlas.
+- `unity/CrossModWeapons` holds the Blueprinter entries that add the Aryx and Boscali weapons to the PB-22's hardpoints. Put them in the mod folder before building.
 - `unity/Editor` holds the Unity editor tools that assemble the prefab in a Blueprinter project (menu PB22). Build the bundle with Blueprinter > Mod Builder.
 - Copy the `.nobp` next to `src/PB22Trident.csproj` and run `dotnet build -c Release -p:GameDir="<your Nuclear Option folder>"`.
 

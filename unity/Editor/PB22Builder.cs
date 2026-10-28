@@ -496,8 +496,10 @@ public static class PB22Builder
             // livery and damage reach every hull renderer of the two cabin parts
             ObjArray(C(c, "AeroPart"), "damageMaterial.renderers", c.GetComponent<MeshRenderer>(), FindIn(c, "hatch_PL").GetComponent<MeshRenderer>(), FindIn(c, "hatch_PR").GetComponent<MeshRenderer>());
             ObjArray(C(fFF, "AeroPart"), "damageMaterial.renderers", fFF.GetComponent<MeshRenderer>(), FindIn(fFF, "hatch_NL").GetComponent<MeshRenderer>(), FindIn(fFF, "hatch_NR").GetComponent<MeshRenderer>());
-            Joints(C(c.Find("nose"), "AeroPart"), C(c, "AeroPart"), 200000f);
-            Joints(C(c, "AeroPart"), C(fFF, "AeroPart"), 300000f);
+            // cross-linked like the AB-4 (nose to cockpit and forward fuselage, cockpit to both forward sections), so the crew
+            // section isn't a single-joint chain: at high speed the long nose made the cockpit, and with it the camera, shake (1.2.1)
+            Joints(C(c.Find("nose"), "AeroPart"), C(c, "AeroPart"), 200000f, C(fFF, "AeroPart"), 200000f);
+            Joints(C(c, "AeroPart"), C(fFF, "AeroPart"), 300000f, C(fFF.parent, "AeroPart"), 300000f);
             Set(C(c, "AeroPart"), "armorProperties.pierceArmor", 50f); Set(C(c, "AeroPart"), "armorProperties.blastArmor", 80f);
         }
         finally { PrefabUtility.UnloadPrefabContents(ew.gameObject); }

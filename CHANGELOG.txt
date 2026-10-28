@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.2.1
+- Weapons from the Aryx Weaponry Pack and Boscali Summer can be loaded on the PB-22 when those mods are installed. Neither is required: with one, both or neither installed the PB-22 works as before, and anything from a missing mod simply isn't offered.
+  - Forward or rear bay: PAB-3000LR x2 and the AGM-76 Atlatl rotary rack (Aryx).
+  - Combined bay: HSM-750 Starfall, PGM-400LR x8 (Aryx); HAWC-X x2, GLAIVE-2A x2 and GLAIVE-2S x2 (Boscali).
+  - Glove and wing pylons: AGM-111 Nemesis, PGM-400LR x2, Tusko-N (Aryx); AGT-80 ORCA x1 and x3, XQ-58V REMORA, HAWC-X (Boscali).
+  - Wing pylons only: 2000 kg drop tank (Aryx). The Starfall is also offered on the wing pylons, but Aryx marks that version as event content, so it only appears in missions with event content turned on.
+- Less shaking around Mach 1. The nose and cockpit are now braced to the forward fuselage the same way the stock AB-4's are, so the long nose no longer shakes the cockpit and the camera with it.
+
 ## 1.1.0
 - Damage now works like the stock aircraft. Parts break off along straight panel lines with no gaps at the joints, the skin can be seen from both sides, and torn metal edges come from the damage texture. A broken-off section shows the frames and the inside of the skin instead of a flat lid.
 - Honeycomb core shows under torn skin, using the game's own honeycomb material.

@@ -13,7 +13,7 @@ namespace PB22Trident
 {
     // Carries the PB-22 Trident bundle (embedded .nobp, loaded by Blueprinter) and spins the engine fans. Test builds
     // (-p:DefineConstants=FLIGHTLOG) also write a flight log of the player's aircraft for performance tuning.
-    [BepInPlugin("nick.nuclearoption.pb22trident", "PB-22 Trident", "1.1.0")]
+    [BepInPlugin("nick.nuclearoption.pb22trident", "PB-22 Trident", "1.2.1")]
     [BepInDependency("com.nikkorap.blueprinter", BepInDependency.DependencyFlags.SoftDependency)]
     public class Plugin : BaseUnityPlugin
     {

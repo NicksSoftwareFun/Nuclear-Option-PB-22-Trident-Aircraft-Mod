@@ -531,6 +531,7 @@ public static class PB22Builder
             var wp = ph.GetChild(0); wp.localPosition = Vector3.zero; wp.rotation = Quaternion.identity;
             SetMesh(wp, "glovePylon_" + s);
             wp.GetChild(0).position = P("pylonMount_glove_" + s);
+            Stagger(wp.GetChild(0), s);
 
             var w2 = w1.Find("wing2_" + s);
             var tipOld = w2.Find("wingtip_" + s);
@@ -898,6 +899,7 @@ public static class PB22Builder
             var it = root.Find("intake_" + s);
             var py = New("midPylon_" + s, it); Part(py, "midPylon_" + s);
             var mount = New("pylonMount_mid_" + s, py); mount.position = P("pylonMount_mid_" + s);
+            Stagger(mount, s);
             string hp = "hardpointSets.Array.data[3].hardpoints.Array.data[" + k + "].";
             Set(wm, hp + "transform", mount);
             Set(wm, hp + "part", C(it, "AeroPart"));
@@ -1013,6 +1015,17 @@ public static class PB22Builder
     // (pierce - armour) / tolerance to a 100 HP part, so tolerance is the HP multiplier: the core takes ~29 hits of a 60-pierce round
     // (Medusa 17, Darkreach 67), the crew section is armoured like the stock crew tubs, and the moving surfaces stay fragile so
     // damage shows (pieces come off) long before a kill.
+    // The game fires a pylon pair's stores front to back by their distance along the nose, and stores level with each
+    // other (side by side racks, and the same store on the left and right pylon) come out in loading order: the whole
+    // left rack, then the whole right one. A 0.5 degree toe-out puts each rack's outboard store a couple of mm ahead
+    // of its inboard one, and the left mount sits 0.5 mm ahead of the right, so the stores go left, right, left, right,
+    // outboard to inboard and front to back (1.2.2).
+    static void Stagger(Transform mount, string s)
+    {
+        float sg = s == "L" ? 1f : -1f;
+        mount.rotation = Quaternion.Euler(0f, 0.5f * sg, 0f) * mount.rotation;
+        if (s == "L") mount.position += new Vector3(0f, 0f, 0.0005f);
+    }
     static void Arm(string path, float pa, float pt, float ba, float bt)
     {
         var t = path == "" ? root : Find(root, path);
@@ -1057,7 +1070,10 @@ public static class PB22Builder
         foreach (var s in new[] { "L", "R" })
         {
             Arm("intake_" + s, 20f, 8f, 70f, 4f);
-            Arm("gearbay_" + s, 20f, 8f, 70f, 4f);
+            // the gear pods hang lowest and took hits first: twice the tolerance of the other side sections, and they hold on
+            // until -100 HP like the engine bays (was -25), so they are no longer the first thing to fall off (1.2.2)
+            Arm("gearbay_" + s, 20f, 16f, 70f, 8f);
+            Set(C(Find(root, "gearbay_" + s), "AeroPart"), "structuralThreshold", -100f);
             Arm("wingroot_" + s, 20f, 8f, 70f, 4f);
             Arm("engines_" + s, 20f, 8f, 70f, 4f);
             Arm("nozzles_" + s, 15f, 6f, 40f, 3f);
@@ -1068,8 +1084,8 @@ public static class PB22Builder
             Arm("spoiler_" + s, 15f, 4f, 40f, 2.5f);
             Arm("elevator_" + s, 15f, 4f, 40f, 2.5f);
             // the gear pods carry the main gear loads: an AI takeoff tore one off at the AB-4's 200 k, so they get Darkreach-class mounts
-            JointForce("gearbay_" + s, "PB22Trident", 1000000f); JointForce("gearbay_" + s, "fuselage_R", 800000f);
-            JointForce("gearbay_" + s, "wingroot_" + s, 800000f); JointForce("gearbay_" + s, "engines_" + s, 600000f);
+            JointForce("gearbay_" + s, "PB22Trident", 1500000f); JointForce("gearbay_" + s, "fuselage_R", 1200000f);
+            JointForce("gearbay_" + s, "wingroot_" + s, 1200000f); JointForce("gearbay_" + s, "engines_" + s, 900000f);
             JointForce("elevator_" + s, "fuselage_R", 200000f); JointForce("elevator_" + s, "tail", 200000f);
             JointForce("elevator_" + s, "engines_" + s, 150000f); JointForce("elevator_" + s, "nozzles_" + s, 150000f);
             JointForce("flap_" + s, "wing1_" + s, 100000f); JointForce("flap_" + s, "wing2_" + s, 100000f);
@@ -1077,6 +1093,10 @@ public static class PB22Builder
             // kill engines), all at 80 HP like the Darkreach
             string n = s == "L" ? "1" : "3";
             var tf = C(Need(root, "engine" + n), "Turbofan");
+            // the right engine keeps the AB-4's object name engine3, but the crew call it engine 2 (1.2.2)
+            string num = s == "L" ? "1" : "2";
+            Set(tf, "failureMessage", "ENGINE " + num + " FIRE");
+            Set(tf, "failureMessageAudio", AssetDatabase.LoadAssetAtPath<AudioClip>("Assets/Blueprinter/_donotship/AudioClip/engine" + num + "Fire_PLACEHOLDER.ogg"));
             Size(tf, "criticalParts", 3);
             string[] cp = { "engines_" + s, "intake_" + s, "nozzles_" + s }; float[] cw = { 0.5f, 0.25f, 0.25f };
             for (int i = 0; i < 3; i++)

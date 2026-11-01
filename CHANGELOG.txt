@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.2
+- Workshop tag "PB-22 Trident" on the aircraft definition, so PB-22 liveries can be uploaded to the Steam Workshop (needs the game update from the end of October).
+- Landing gear pods are much tougher: they take damage at half the rate, stay attached until well past zero health like the engine bays, and their mounts to the fuselage are 50% stronger. They were the first thing to fall off.
+- Pylon stores now fire alternating left and right, outboard first and front to back. Side by side racks used to empty the whole left rack before the right one.
+- A right engine fire is now called out as ENGINE 2 FIRE (it said ENGINE 3).
+
 ## 1.2.1
 - Weapons from the Aryx Weaponry Pack and Boscali Summer can be loaded on the PB-22 when those mods are installed. Neither is required: with one, both or neither installed the PB-22 works as before, and anything from a missing mod simply isn't offered.
   - Forward or rear bay: PAB-3000LR x2 and the AGM-76 Atlatl rotary rack (Aryx).

@@ -1,3 +1,5 @@
+**Due to coordinated account report attempts from the nuclear option discord community (they snitch on you when you make it this obvious) this project will no longer be updated. I encourage everyone to enjoy this mod as-is or carry it into the future yourselves. It was an enjoyable time but the coordinated effort to kill my accounts is affecting my more professional efforts. Sorry!**
+
 # PB-22 Trident
 
 A modern long-range naval strike bomber for Nuclear Option, inspired by the Tu-22M3 Backfire. Swing wings, two afterburning engines, a four-seat cockpit and a big weapons load for hitting ships and ground targets from far away.

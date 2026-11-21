@@ -1,3 +1,5 @@
+<p align="center"><b>Due to coordinated account report attempts from the nuclear option discord community (they snitch on you when you make it this obvious) this project will no longer be updated. I encourage everyone to enjoy this mod as-is or carry it into the future yourselves. It was an enjoyable time but the coordinated effort to kill my accounts is affecting my more professional efforts. Sorry!</b></p>
+
 <img width="1624" height="634" alt="Preflight" src="https://github.com/user-attachments/assets/f39084f3-4825-4bfd-a14a-6a0348c742ad" />
 <img width="1920" height="974" alt="GreencamoTakeoff" src="https://github.com/user-attachments/assets/6cc048c1-c5f0-4c80-bd15-0708f17e7684" />
 <img width="1253" height="654" alt="underbelly" src="https://github.com/user-attachments/assets/e6897b02-b127-4074-a83a-030c33106ab4" />
